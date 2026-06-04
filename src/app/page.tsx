@@ -206,6 +206,14 @@ export default function HomePage(props: PageProps) {
             />
             {/* Background Loop Video - Self-hosted local video asset */}
             <video
+              ref={(el) => {
+                if (el) {
+                  el.muted = true;
+                  el.play().catch((err) => {
+                    console.log("Autoplay was prevented:", err);
+                  });
+                }
+              }}
               className="w-full h-full object-cover relative z-10"
               autoPlay
               muted
