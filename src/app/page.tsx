@@ -8,7 +8,7 @@ import { ArrowDown } from 'lucide-react';
 
 // Host your video externally (e.g. on Vercel Blob, Cloudinary, AWS S3) and paste the HTTPS URL below.
 // Local '/videos/hero.mp4' will fall back to the poster image on the live Vercel site since it is gitignored.
-const HERO_VIDEO_URL = 'https://9gza8xtd76zupxap.private.blob.vercel-storage.com/hero.mp4?vercel-blob-delegation=eyJzdG9yZUlkIjoic3RvcmVfOUd6QTh4dEQ3Nlp1UHhBcCIsIm93bmVySWQiOiJ0ZWFtX0Vhak1McXcxeU40ZENDUkRQRjNPWHFPZyIsInBhdGhuYW1lIjoiKiIsIm9wZXJhdGlvbnMiOlsiZ2V0IiwiaGVhZCJdLCJ2YWxpZFVudGlsIjoxNzgwNjUzOTQ3NzkyLCJpYXQiOjE3ODA2MTA3NDgyMzF9.k6yTitinbWwy3a5FDlpZHwlNXoyMd9bZCvBnWYN3mKc&vercel-blob-signature=Yfhg6yN7VJSGx0YbkrqSD2mSaGqEzaI7g1OqMsOiJxo';
+const HERO_VIDEO_URL = 'https://22icqgouubbjklkh.public.blob.vercel-storage.com/hero.mp4';
 
 // Mock Portfolio Items
 const portfolioItems = [
