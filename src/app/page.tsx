@@ -6,6 +6,10 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ArrowDown } from 'lucide-react';
 
+// Host your video externally (e.g. on Vercel Blob, Cloudinary, AWS S3) and paste the HTTPS URL below.
+// Local '/videos/hero.mp4' will fall back to the poster image on the live Vercel site since it is gitignored.
+const HERO_VIDEO_URL = '/videos/hero.mp4';
+
 // Mock Portfolio Items
 const portfolioItems = [
   {
@@ -208,7 +212,7 @@ export default function HomePage(props: PageProps) {
               loop
               playsInline
               preload="auto"
-              src="/videos/hero.mp4"
+              src={HERO_VIDEO_URL}
             />
           </div>
           {/* Bottom Dark Gradient Overlay */}
