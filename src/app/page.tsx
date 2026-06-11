@@ -81,7 +81,6 @@ export default function HomePage(props: PageProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const taglineRef = useRef<HTMLDivElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
   const marqueeRef = useRef<HTMLDivElement>(null);
 
   // Filter marquee projects based on selected tab
@@ -140,28 +139,7 @@ export default function HomePage(props: PageProps) {
       });
     }
 
-    // 3. Scroll Reveal for Work Section Grid Items
-    if (gridRef.current) {
-      const cards = gridRef.current.querySelectorAll('.portfolio-card-wrap');
-      cards.forEach((card) => {
-        gsap.fromTo(card,
-          { opacity: 0, y: 50 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.8,
-            ease: 'power3.out',
-            scrollTrigger: {
-              trigger: card,
-              start: 'top 85%',
-              toggleActions: 'play none none none',
-            }
-          }
-        );
-      });
-    }
-
-    // 4. Marquee horizontal infinite scroll loop
+    // 3. CTA Marquee horizontal infinite scroll loop (text ticker in section 3)
     if (marqueeRef.current) {
       const marqueeInner = marqueeRef.current.querySelector('.marquee-inner');
       gsap.to(marqueeInner, {
@@ -177,16 +155,6 @@ export default function HomePage(props: PageProps) {
     };
   }, []);
 
-  // Re-run scroll animations for grid when activeCategory changes
-  useEffect(() => {
-    const cards = gridRef.current?.querySelectorAll('.portfolio-card-wrap');
-    if (cards && cards.length > 0) {
-      gsap.fromTo(cards,
-        { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.05 }
-      );
-    }
-  }, [activeCategory]);
 
   const scrollToWork = () => {
     const workSection = document.getElementById('work');
@@ -320,42 +288,36 @@ export default function HomePage(props: PageProps) {
         </button>
       </section>
 
-      {/* 2. Portfolio Grid Section */}
-      <section id="work" className="bg-black py-24 px-6 md:px-12 w-full">
-        <div className="max-w-[1400px] mx-auto flex flex-col gap-12">
-          
-          {/* Categories Tab Bar */}
-          <div className="sticky top-16 md:top-20 z-40 bg-black/90 backdrop-blur-sm border-b border-white/10 py-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h2 className="font-primary font-black text-2xl md:text-3xl tracking-wider uppercase">
-              Featured Work
-            </h2>
-            <div className="flex flex-wrap gap-x-6 gap-y-2">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`font-primary font-bold text-[10px] tracking-[0.2em] uppercase transition-colors py-1 relative ${
-                    activeCategory === cat ? 'text-white' : 'text-white/40 hover:text-white'
-                  }`}
-                >
-                  {cat}
-                  {activeCategory === cat && (
-                    <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white" />
-                  )}
-                </button>
-              ))}
-            </div>
+      {/* 2. Portfolio Marquee Section — full-viewport, edge-to-edge */}
+      <section id="work" className="w-full bg-[#0a0a0a]">
+        {/* Sticky category tab bar sits above the marquee */}
+        <div className="sticky top-16 md:top-20 z-40 bg-black/90 backdrop-blur-sm border-b border-white/10 py-5 px-6 md:px-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <h2 className="font-primary font-black text-2xl md:text-3xl tracking-wider uppercase">
+            Featured Work
+          </h2>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`font-primary font-bold text-[10px] tracking-[0.2em] uppercase transition-colors py-1 relative ${
+                  activeCategory === cat ? 'text-white' : 'text-white/40 hover:text-white'
+                }`}
+              >
+                {cat}
+                {activeCategory === cat && (
+                  <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white" />
+                )}
+              </button>
+            ))}
           </div>
-
-          {/* Brady Perron Scrolling Portfolio Marquee */}
-          <div className="w-full mt-4">
-            <PortfolioMarquee 
-              projects={filteredMarqueeProjects} 
-              onCardClick={(project) => setSelectedProject(project)} 
-            />
-          </div>
-
         </div>
+
+        {/* Edge-to-edge Brady Perron dual-row marquee */}
+        <PortfolioMarquee
+          projects={filteredMarqueeProjects}
+          onCardClick={(project) => setSelectedProject(project)}
+        />
       </section>
 
       {/* 3. Horizontal Scrolling Text / Marquee CTA */}
@@ -399,10 +361,12 @@ export default function HomePage(props: PageProps) {
       </section>
 
       {/* Cinematic Detail Overlay */}
-      <ProjectOverlay 
-        project={selectedProject} 
-        onClose={() => setSelectedProject(null)} 
-      />
+      {selectedProject && (
+        <ProjectOverlay 
+          project={selectedProject} 
+          onClose={() => setSelectedProject(null)} 
+        />
+      )}
     </div>
   );
 }
