@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ArrowDown } from 'lucide-react';
+import PortfolioMarquee from '@/components/PortfolioMarquee';
+import ProjectOverlay from '@/components/ProjectOverlay';
+import { projects as marqueeProjects, Project } from '@/components/projects';
 
 // Host your video externally (e.g. on Vercel Blob, Cloudinary, AWS S3) and paste the HTTPS URL below.
 // Local '/videos/hero.mp4' will fall back to the poster image on the live Vercel site since it is gitignored.
@@ -75,15 +78,23 @@ export default function HomePage(props: PageProps) {
   use(props.searchParams);
 
   const [activeCategory, setActiveCategory] = useState('all');
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const taglineRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const marqueeRef = useRef<HTMLDivElement>(null);
 
-  // Filter items based on selected tab
-  const filteredItems = activeCategory === 'all'
-    ? portfolioItems
-    : portfolioItems.filter(item => item.category === activeCategory);
+  // Filter marquee projects based on selected tab
+  const filteredMarqueeProjects = activeCategory === 'all'
+    ? marqueeProjects
+    : marqueeProjects.filter(project => {
+        const tag = project.tag.toLowerCase();
+        if (activeCategory === 'cinematic') return tag.includes('cinematic') || tag.includes('short');
+        if (activeCategory === 'commercial') return tag.includes('commercial');
+        if (activeCategory === 'lifestyle') return tag.includes('lifestyle') || tag.includes('fashion');
+        if (activeCategory === 'aerial') return tag.includes('drone') || tag.includes('aerial');
+        return false;
+      });
 
   useEffect(() => {
     // Register ScrollTrigger plugin on client mount
@@ -336,66 +347,12 @@ export default function HomePage(props: PageProps) {
             </div>
           </div>
 
-          {/* Asymmetric Portfolio Grid */}
-          <div
-            ref={gridRef}
-            className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mt-4"
-          >
-            {filteredItems.map((item, index) => {
-              // Create asymmetric size classes dynamically
-              const isLargeCard = index === 0 || index === 3;
-              const gridClasses = isLargeCard 
-                ? 'col-span-1 md:col-span-2' 
-                : 'col-span-1';
-
-              return (
-                <div
-                  key={item.id}
-                  className={`portfolio-card-wrap flex flex-col gap-4 ${gridClasses}`}
-                >
-                  {/* Card Image Container */}
-                  <Link
-                    href={`/work`}
-                    data-cursor="view"
-                    className={`block relative overflow-hidden group w-full ${item.aspect} bg-neutral-900 border border-white/5`}
-                  >
-                    {/* Background Image with Scale Hover Effect */}
-                    <div
-                      className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-                      style={{ backgroundImage: `url('${item.image}')` }}
-                    />
-                    
-                    {/* Dark Overlay Hover Effect */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    
-                    {/* Text reveal overlay for details */}
-                    <div className="absolute inset-x-0 bottom-0 p-8 flex flex-col justify-end opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500 z-20">
-                      <span className="font-primary font-bold text-[9px] tracking-[0.25em] text-white/60 uppercase mb-1">
-                        {item.category}
-                      </span>
-                      <h3 className="font-primary font-black text-lg md:text-xl tracking-wide uppercase">
-                        {item.title}
-                      </h3>
-                    </div>
-                  </Link>
-
-                  {/* Out of Card Info (Always visible on mobile/default) */}
-                  <div className="flex justify-between items-center px-1">
-                    <div className="flex flex-col">
-                      <h4 className="font-primary font-bold text-xs tracking-wider uppercase text-white">
-                        {item.title}
-                      </h4>
-                      <span className="font-secondary text-[10px] text-white/50">
-                        {item.subtitle}
-                      </span>
-                    </div>
-                    <span className="font-primary font-bold text-[10px] tracking-widest text-white/40 uppercase">
-                      / 2026
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+          {/* Brady Perron Scrolling Portfolio Marquee */}
+          <div className="w-full mt-4">
+            <PortfolioMarquee 
+              projects={filteredMarqueeProjects} 
+              onCardClick={(project) => setSelectedProject(project)} 
+            />
           </div>
 
         </div>
@@ -440,6 +397,12 @@ export default function HomePage(props: PageProps) {
         </div>
 
       </section>
+
+      {/* Cinematic Detail Overlay */}
+      <ProjectOverlay 
+        project={selectedProject} 
+        onClose={() => setSelectedProject(null)} 
+      />
     </div>
   );
 }
