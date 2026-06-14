@@ -5,9 +5,16 @@ import Link from 'next/link';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ArrowDown } from 'lucide-react';
-import PortfolioMarquee from '@/components/PortfolioMarquee';
+import BradyShowcase from '@/components/BradyShowcase';
 import ProjectOverlay from '@/components/ProjectOverlay';
 import { projects as marqueeProjects, Project } from '@/components/projects';
+import dynamic from 'next/dynamic';
+
+const Agentation = dynamic(
+  () => import('agentation').then((mod) => mod.Agentation),
+  { ssr: false }
+);
+
 
 // Host your video externally (e.g. on Vercel Blob, Cloudinary, AWS S3) and paste the HTTPS URL below.
 // Local '/videos/hero.mp4' will fall back to the poster image on the live Vercel site since it is gitignored.
@@ -78,6 +85,7 @@ export default function HomePage(props: PageProps) {
   use(props.searchParams);
 
   const [activeCategory, setActiveCategory] = useState('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const taglineRef = useRef<HTMLDivElement>(null);
@@ -295,28 +303,52 @@ export default function HomePage(props: PageProps) {
           <h2 className="font-primary font-black text-2xl md:text-3xl tracking-wider uppercase">
             Featured Work
           </h2>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            {categories.map((cat) => (
+          <div className="flex flex-wrap items-center gap-6 md:gap-8">
+            {/* Categories */}
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`font-primary font-bold text-[10px] tracking-[0.2em] uppercase transition-colors py-1 relative ${
+                    activeCategory === cat ? 'text-white' : 'text-white/40 hover:text-white'
+                  }`}
+                >
+                  {cat}
+                  {activeCategory === cat && (
+                    <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white" />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Grid/List View Toggle */}
+            <div className="flex items-center bg-white/5 border border-white/10 rounded-full p-1 select-none">
               <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`font-primary font-bold text-[10px] tracking-[0.2em] uppercase transition-colors py-1 relative ${
-                  activeCategory === cat ? 'text-white' : 'text-white/40 hover:text-white'
+                onClick={() => setViewMode('grid')}
+                className={`px-4 py-1.5 rounded-full font-primary font-bold text-[10px] tracking-[0.15em] uppercase transition-all duration-300 ${
+                  viewMode === 'grid' ? 'bg-white text-black' : 'text-white/60 hover:text-white'
                 }`}
               >
-                {cat}
-                {activeCategory === cat && (
-                  <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white" />
-                )}
+                Grid
               </button>
-            ))}
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-4 py-1.5 rounded-full font-primary font-bold text-[10px] tracking-[0.15em] uppercase transition-all duration-300 ${
+                  viewMode === 'list' ? 'bg-white text-black' : 'text-white/60 hover:text-white'
+                }`}
+              >
+                List
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Edge-to-edge Brady Perron dual-row marquee */}
-        <PortfolioMarquee
+        {/* Edge-to-edge Brady Perron 3D stack / list showcase */}
+        <BradyShowcase
           projects={filteredMarqueeProjects}
           onCardClick={(project) => setSelectedProject(project)}
+          viewMode={viewMode}
         />
       </section>
 
@@ -367,6 +399,9 @@ export default function HomePage(props: PageProps) {
           onClose={() => setSelectedProject(null)} 
         />
       )}
+
+      {/* Agentation visual annotation feedback toolbar */}
+      <Agentation />
     </div>
   );
 }

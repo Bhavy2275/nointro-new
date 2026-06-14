@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, use } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ChevronRight, ChevronDown } from 'lucide-react';
+import FluidGlass from '@/components/FluidGlass';
 
 const services = [
   {
@@ -170,6 +171,30 @@ export default function ServicesPage(props: PageProps) {
               </div>
             );
           })}
+        </div>
+
+        {/* Interactive Fluid Glass Visual Lab */}
+        <div className="services-reveal flex flex-col gap-8 border-t border-white/10 pt-16 mt-8">
+          <div className="flex flex-col gap-4">
+            <span className="font-primary font-bold text-xs tracking-[0.25em] text-white/50 uppercase">
+              VISUAL LAB
+            </span>
+            <h2 className="font-primary font-black text-2xl md:text-4xl tracking-wider uppercase">
+              Interactive Fluid Glass
+            </h2>
+          </div>
+          <div className="relative w-full h-[600px] border border-white/10 overflow-hidden bg-zinc-950/20">
+            <FluidGlass 
+              mode="lens"
+              lensProps={{
+                scale: 0.25,
+                ior: 1.15,
+                thickness: 5,
+                chromaticAberration: 0.1,
+                anisotropy: 0.01  
+              }}
+            />
+          </div>
         </div>
 
       </div>

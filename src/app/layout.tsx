@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Montserrat, Inter } from 'next/font/google';
+import { Montserrat, Inter, Fraunces } from 'next/font/google';
 import './globals.css';
 import SmoothScroll from '@/components/SmoothScroll';
 import CustomCursor from '@/components/CustomCursor';
@@ -22,6 +22,13 @@ const inter = Inter({
   display: 'swap',
 });
 
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  weight: ['100', '200', '300', '400', '900'],
+  variable: '--font-fraunces',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'NOINTRO | Creative Marketing Agency',
   description: 'Cinematic portfolio of NoIntro, a creative agency crafting bold visual designs, video productions, and digital strategy.',
@@ -38,7 +45,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${montserrat.variable} ${inter.variable}`}>
+    <html lang="en" className={`${montserrat.variable} ${inter.variable} ${fraunces.variable}`}>
       <body className="font-secondary bg-black text-white min-h-screen flex flex-col antialiased">
         {/* Cinematic Preloader count-up overlay */}
         <Preloader />

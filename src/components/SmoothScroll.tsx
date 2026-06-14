@@ -5,6 +5,12 @@ import Lenis from 'lenis';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
+declare global {
+  interface Window {
+    lenisInstance?: Lenis;
+  }
+}
+
 export default function SmoothScroll({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Only run on client
@@ -36,13 +42,13 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     gsap.ticker.lagSmoothing(0);
 
     // Store lenis globally for optional anchor scrolls
-    (window as unknown as { lenisInstance?: Lenis }).lenisInstance = lenis;
+    window.lenisInstance = lenis;
 
     // Clean up
     return () => {
       lenis.destroy();
       gsap.ticker.remove(tick);
-      delete (window as unknown as { lenisInstance?: Lenis }).lenisInstance;
+      delete window.lenisInstance;
     };
   }, []);
 

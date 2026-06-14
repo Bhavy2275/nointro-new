@@ -92,28 +92,127 @@ body {
   image-rendering: crisp-edges;
 }
 
-/* Apple-style Glassmorphism Navbar */
-.navbar-glass {
-  background: transparent;
-  backdrop-filter: blur(0px) saturate(100%);
-  -webkit-backdrop-filter: blur(0px) saturate(100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0);
-  transition: all 0.4s ease;
+/* ═══════════════════════════════════════════════════════════
+   Apple Liquid Glass — visionOS-inspired navbar effect
+   Three-layer system:
+     1. backdrop-filter frosted glass base
+     2. ::before — specular/iridescent shimmer
+     3. ::after  — bottom border glow
+   ═══════════════════════════════════════════════════════════ */
+
+@keyframes glass-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
 }
 
-.navbar-glass.glass-active {
-  background: rgba(0, 0, 0, 0.3) !important;
-  backdrop-filter: blur(24px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+@keyframes glass-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.9; }
 }
 
-/* Glassmorphic Dropdown Menu */
+.liquid-glass {
+  position: relative;
+  /* Warm-tinted frosted glass fill */
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.055) 0%,
+    rgba(255, 255, 255, 0.018) 50%,
+    rgba(200, 210, 255, 0.025) 100%
+  );
+  backdrop-filter: blur(28px) saturate(200%) brightness(1.05);
+  -webkit-backdrop-filter: blur(28px) saturate(200%) brightness(1.05);
+  /* Iridescent top/bottom border glow */
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 2px 0px rgba(255, 255, 255, 0.12) inset,
+    0 -1px 0px rgba(255, 255, 255, 0.04) inset,
+    0 8px 32px rgba(0, 0, 0, 0.38),
+    0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  isolation: isolate;
+}
+
+/* Specular shimmer sweep — the signature Apple glass highlight */
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.0)  30%,
+    rgba(255, 255, 255, 0.08) 48%,
+    rgba(180, 200, 255, 0.06) 52%,
+    rgba(255, 255, 255, 0.0)  70%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: glass-shimmer 6s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Bottom edge glow — pulses softly */
+.liquid-glass::after {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(180, 200, 255, 0.5) 30%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(180, 200, 255, 0.5) 70%,
+    transparent
+  );
+  animation: glass-pulse 4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Make sure nav children render above pseudo-elements */
+.liquid-glass > * {
+  position: relative;
+  z-index: 3;
+}
+
+.liquid-glass.scrolled {
+  background: linear-gradient(
+    135deg,
+    rgba(8, 8, 12, 0.72)  0%,
+    rgba(14, 14, 22, 0.82) 50%,
+    rgba(8, 10, 20, 0.75)  100%
+  );
+  backdrop-filter: blur(40px) saturate(220%) brightness(0.98);
+  -webkit-backdrop-filter: blur(40px) saturate(220%) brightness(0.98);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 2px 0px rgba(255, 255, 255, 0.1) inset,
+    0 12px 40px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Liquid Glass Dropdown Menu */
 .dropdown-glass {
-  background: rgba(10, 10, 10, 0.85);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  position: relative;
+  background: linear-gradient(
+    160deg,
+    rgba(12, 12, 18, 0.85) 0%,
+    rgba(6, 6, 10, 0.92)   100%
+  );
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.07) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 /* Contact Us custom button */
