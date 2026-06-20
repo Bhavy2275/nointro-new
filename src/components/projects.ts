@@ -27,7 +27,7 @@ export const projects: Project[] = [
     gradient: 'linear-gradient(160deg, #1a1a2e 0%, #0a0a0a 100%)',
     image:
       'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=1200&auto=format&fit=crop',
-    video: '/videos/2 Part Slowed visualizer.mp4',
+    video: 'https://22icqgouubbjklkh.public.blob.vercel-storage.com/2%20Part%20Slowed%20visualizer.mp4',
     meta: { Client: 'LowKey Records', Year: '2025', Role: 'Post Production' },
   },
   {
@@ -39,7 +39,7 @@ export const projects: Project[] = [
     gradient: 'linear-gradient(160deg, #0f0f0f 0%, #1c1c1c 100%)',
     image:
       'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1200&auto=format&fit=crop',
-    video: '/videos/Blangywood Aftermovie.MP4',
+    video: 'https://22icqgouubbjklkh.public.blob.vercel-storage.com/Blangywood%20Aftermovie.mp4',
     meta: { Client: 'Blangywood Festival', Year: '2024', Role: 'Cinematography & Editing' },
   },
   {
@@ -51,7 +51,7 @@ export const projects: Project[] = [
     gradient: 'linear-gradient(160deg, #111111 0%, #1a1a1a 100%)',
     image:
       'https://images.unsplash.com/photo-1507679799987-c73779587ccf?q=80&w=1200&auto=format&fit=crop',
-    video: '/videos/C02681_04083960.mov',
+    video: 'https://22icqgouubbjklkh.public.blob.vercel-storage.com/C02681_04083960.mov',
     meta: { Client: 'NoIntro Studios', Year: '2026', Role: 'DP & Color Grading' },
   },
   {
@@ -63,7 +63,7 @@ export const projects: Project[] = [
     gradient: 'linear-gradient(160deg, #0d1117 0%, #161b22 100%)',
     image:
       'https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=1200&auto=format&fit=crop',
-    video: '/videos/LV 3.MP4',
+    video: 'https://22icqgouubbjklkh.public.blob.vercel-storage.com/LV%203.mp4',
     meta: { Client: 'LV Europe', Year: '2025', Role: 'Creative Direction' },
   },
   {
@@ -87,7 +87,7 @@ export const projects: Project[] = [
     gradient: 'linear-gradient(160deg, #1a1510 0%, #0a0a0a 100%)',
     image:
       'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=1200&auto=format&fit=crop',
-    video: '/videos/Timeline l.mov',
+    video: 'https://22icqgouubbjklkh.public.blob.vercel-storage.com/Timeline%20l.mov',
     meta: { Client: 'Personal Work', Year: '2026', Role: 'Director' },
   },
 ];
