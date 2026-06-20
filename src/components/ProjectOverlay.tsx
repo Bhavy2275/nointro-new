@@ -32,7 +32,7 @@ export default function ProjectOverlay({ project, onClose }: ProjectOverlayProps
   }, []);
 
   // ── GSAP Entrance Animation Timeline ──
-  const { contextSafe } = useGSAP(
+  useGSAP(
     () => {
       // Build animation sequence. On reverse complete, trigger the onClose unmount callback.
       tl.current = gsap
@@ -66,15 +66,13 @@ export default function ProjectOverlay({ project, onClose }: ProjectOverlayProps
   );
 
   // Reverses the GSAP timeline and unmounts upon completion
-  const handleClose = contextSafe(
-    useCallback(() => {
-      if (tl.current) {
-        tl.current.reverse();
-      } else {
-        onClose();
-      }
-    }, [onClose])
-  );
+  const handleClose = useCallback(() => {
+    if (tl.current) {
+      tl.current.reverse();
+    } else {
+      onClose();
+    }
+  }, [onClose]);
 
   // ── Close overlay on ESC key ──
   useEffect(() => {
@@ -114,23 +112,36 @@ export default function ProjectOverlay({ project, onClose }: ProjectOverlayProps
         ref={panelRef}
         className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 max-w-6xl w-full mx-auto items-center"
       >
-        {/* Left: Gradient Hero Area with Blended Project Image */}
+        {/* Left: Gradient Hero Area with Blended Project Image or Video */}
         <div
           ref={heroRef}
           style={{ 
             '--hero-gradient': project.gradient,
             '--hero-image': `url('${project.image}')`
           } as React.CSSProperties}
-          className="relative w-full aspect-[3/4] max-h-[50vh] md:max-h-[65vh] bg-[var(--hero-gradient)] rounded-2xl border border-white/10 overflow-hidden shadow-2xl"
+          className={`relative w-full ${project.video ? 'aspect-video' : 'aspect-[3/4]'} max-h-[50vh] md:max-h-[65vh] bg-[var(--hero-gradient)] rounded-2xl border border-white/10 overflow-hidden shadow-2xl`}
         >
-          {/* Background image overlay with mix-blend-mode for cinematic depth */}
-          <div 
-            className="absolute inset-0 bg-cover bg-center opacity-80 mix-blend-overlay transition-transform duration-700 hover:scale-105"
-            style={{ backgroundImage: 'var(--hero-image)' }}
-            aria-hidden="true"
-          />
-          {/* Soft vignette gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" aria-hidden="true" />
+          {project.video ? (
+            <video
+              src={project.video}
+              controls
+              autoPlay
+              loop
+              playsInline
+              className="absolute inset-0 w-full h-full object-contain bg-black"
+            />
+          ) : (
+            <>
+              {/* Background image overlay with mix-blend-mode for cinematic depth */}
+              <div 
+                className="absolute inset-0 bg-cover bg-center opacity-80 mix-blend-overlay transition-transform duration-700 hover:scale-105"
+                style={{ backgroundImage: 'var(--hero-image)' }}
+                aria-hidden="true"
+              />
+              {/* Soft vignette gradient */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" aria-hidden="true" />
+            </>
+          )}
         </div>
 
         {/* Right: Editorial Information Column */}

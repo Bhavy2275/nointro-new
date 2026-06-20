@@ -45,7 +45,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${montserrat.variable} ${inter.variable} ${fraunces.variable}`}>
+    <html lang="en" className={`${montserrat.variable} ${inter.variable} ${fraunces.variable}`} suppressHydrationWarning>
       <body className="font-secondary bg-black text-white min-h-screen flex flex-col antialiased">
         {/* Cinematic Preloader count-up overlay */}
         <Preloader />

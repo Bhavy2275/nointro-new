@@ -4,7 +4,21 @@ import React, { useState, useEffect, useRef, use } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ChevronRight, ChevronDown } from 'lucide-react';
-import FluidGlass from '@/components/FluidGlass';
+import dynamic from 'next/dynamic';
+
+const FluidGlass = dynamic(
+  () => import('@/components/FluidGlass'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full flex items-center justify-center bg-zinc-950/20 animate-pulse">
+        <span className="font-primary font-bold text-xs tracking-widest text-white/40 uppercase">
+          Loading Visual Lab...
+        </span>
+      </div>
+    )
+  }
+);
 
 const services = [
   {

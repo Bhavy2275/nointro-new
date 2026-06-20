@@ -1,11 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef, use } from 'react';
-import Link from 'next/link';
+
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ArrowDown } from 'lucide-react';
-import BradyShowcase from '@/components/BradyShowcase';
 import ProjectOverlay from '@/components/ProjectOverlay';
 import { projects as marqueeProjects, Project } from '@/components/projects';
 import dynamic from 'next/dynamic';
@@ -15,62 +14,26 @@ const Agentation = dynamic(
   { ssr: false }
 );
 
+const BradyShowcase = dynamic(
+  () => import('@/components/BradyShowcase'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <span className="font-primary font-bold text-xs tracking-widest text-white/40 uppercase animate-pulse">
+          Loading Showcase...
+        </span>
+      </div>
+    )
+  }
+);
+
 
 // Host your video externally (e.g. on Vercel Blob, Cloudinary, AWS S3) and paste the HTTPS URL below.
 // Local '/videos/hero.mp4' will fall back to the poster image on the live Vercel site since it is gitignored.
 const HERO_VIDEO_URL = 'https://22icqgouubbjklkh.public.blob.vercel-storage.com/hero.mp4';
 
-// Mock Portfolio Items
-const portfolioItems = [
-  {
-    id: 1,
-    title: 'Echoes of Silence',
-    subtitle: 'Cinematic Short Film',
-    category: 'cinematic',
-    image: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-video',
-  },
-  {
-    id: 2,
-    title: 'The Future of Speed',
-    subtitle: 'Nike Commercial Campaign',
-    category: 'commercial',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-[4/3]',
-  },
-  {
-    id: 3,
-    title: 'Urban Nomads',
-    subtitle: 'Vogue Lifestyle Editorial',
-    category: 'lifestyle',
-    image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-[3/4]',
-  },
-  {
-    id: 4,
-    title: 'Above the Ridge',
-    subtitle: 'Dolomites Drone Showcase',
-    category: 'aerial',
-    image: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-video',
-  },
-  {
-    id: 5,
-    title: 'Neon Nights',
-    subtitle: 'Tokyo Fashion Week Promo',
-    category: 'lifestyle',
-    image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-video',
-  },
-  {
-    id: 6,
-    title: 'Pure Essence',
-    subtitle: 'Luxury Perfume Commercial',
-    category: 'commercial',
-    image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-[4/3]',
-  }
-];
+
 
 const categories = ['all', 'cinematic', 'commercial', 'lifestyle', 'aerial'];
 
@@ -89,7 +52,6 @@ export default function HomePage(props: PageProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const taglineRef = useRef<HTMLDivElement>(null);
-  const marqueeRef = useRef<HTMLDivElement>(null);
 
   // Filter marquee projects based on selected tab
   const filteredMarqueeProjects = activeCategory === 'all'
@@ -147,16 +109,7 @@ export default function HomePage(props: PageProps) {
       });
     }
 
-    // 3. CTA Marquee horizontal infinite scroll loop (text ticker in section 3)
-    if (marqueeRef.current) {
-      const marqueeInner = marqueeRef.current.querySelector('.marquee-inner');
-      gsap.to(marqueeInner, {
-        xPercent: -50,
-        repeat: -1,
-        duration: 20,
-        ease: 'linear',
-      });
-    }
+
 
     return () => {
       ScrollTrigger.getAll().forEach(t => t.kill());
@@ -352,45 +305,6 @@ export default function HomePage(props: PageProps) {
         />
       </section>
 
-      {/* 3. Horizontal Scrolling Text / Marquee CTA */}
-      <section className="bg-black py-28 border-t border-white/10 w-full overflow-hidden flex flex-col items-center">
-        
-        {/* Marquee Element */}
-        <div ref={marqueeRef} className="w-full overflow-hidden select-none mb-12 py-4 bg-neutral-950 border-y border-white/5">
-          <div className="marquee-inner flex whitespace-nowrap gap-12 text-[clamp(2.5rem,8vw,6.5rem)] font-primary font-black uppercase text-white/10 leading-none">
-            <div className="flex items-center gap-12">
-              <span>have a project? let&apos;s talk</span>
-              <span className="text-stroke-gray">{"// NOINTRO //"}</span>
-              <span>have a project? let&apos;s talk</span>
-              <span className="text-stroke-gray">{"// NOINTRO //"}</span>
-            </div>
-            {/* Duplicate for seamless looping */}
-            <div className="flex items-center gap-12" aria-hidden="true">
-              <span>have a project? let&apos;s talk</span>
-              <span className="text-stroke-gray">{"// NOINTRO //"}</span>
-              <span>have a project? let&apos;s talk</span>
-              <span className="text-stroke-gray">{"// NOINTRO //"}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Button & Contact Info */}
-        <div className="flex flex-col items-center gap-8 text-center px-6">
-          <Link
-            href="/contact"
-            data-cursor="view"
-            className="border border-white px-10 py-4 font-primary font-bold text-xs tracking-[0.25em] text-white hover:bg-white hover:text-black transition-all duration-300 uppercase"
-          >
-            Get In Touch
-          </Link>
-          
-          <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 mt-4 font-secondary text-xs text-white/60">
-            <span>hello@nointro.agency</span>
-            <span>Based in Paris, France</span>
-          </div>
-        </div>
-
-      </section>
 
       {/* Cinematic Detail Overlay */}
       {selectedProject && (

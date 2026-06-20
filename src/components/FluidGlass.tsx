@@ -43,7 +43,8 @@ export default function FluidGlass({ mode = 'lens', lensProps = {}, barProps = {
     { label: 'Contact', link: '/contact' }
   ];
 
-  const { navItems: _, ...modeProps } = rawOverrides as Record<string, unknown>;
+  const modeProps = { ...rawOverrides } as Record<string, unknown>;
+  delete modeProps.navItems;
 
   return (
     <Canvas camera={{ position: [0, 0, 20], fov: 15 }} gl={{ alpha: true }}>
@@ -78,7 +79,7 @@ interface ZoomMaterial extends THREE.Material {
   zoom: number;
 }
 
-interface ZoomMesh extends THREE.Mesh<THREE.BufferGeometry, ZoomMaterial> {}
+type ZoomMesh = THREE.Mesh<THREE.BufferGeometry, ZoomMaterial>;
 
 type ZoomGroup = THREE.Group & { children: ZoomMesh[] };
 
@@ -209,10 +210,15 @@ function NavItems({ items }: { items: NavItem[] }) {
   const [device, setDevice] = useState<keyof typeof DEVICE>('desktop');
 
   useEffect(() => {
-    setDevice(getDevice());
-    const onResize = () => setDevice(getDevice());
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    const handleResize = () => {
+      setDevice(getDevice());
+    };
+    const timer = setTimeout(handleResize, 0);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const { spacing, fontSize } = DEVICE[device];
@@ -229,7 +235,7 @@ function NavItems({ items }: { items: NavItem[] }) {
 
   const handleNavigate = (link: string) => {
     if (!link) return;
-    link.startsWith('#') ? (window.location.hash = link) : (window.location.href = link);
+    window.location.assign(link);
   };
 
   return (
@@ -307,10 +313,15 @@ function Typography() {
   const [device, setDevice] = useState<keyof typeof DEVICE>('desktop');
 
   useEffect(() => {
-    setDevice(getDevice());
-    const onResize = () => setDevice(getDevice());
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    const handleResize = () => {
+      setDevice(getDevice());
+    };
+    const timer = setTimeout(handleResize, 0);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const { fontSize } = DEVICE[device];

@@ -2,10 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Image as DreiImage } from '@react-three/drei';
 import * as THREE from 'three';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import type { Project } from './projects';
 
 interface BradyShowcaseProps {
@@ -38,9 +35,11 @@ function Card({
   onHoverChange: (hovered: boolean) => void;
 }) {
   const meshRef = useRef<THREE.Mesh>(null!);
+  const materialRef = useRef<THREE.MeshBasicMaterial>(null!);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [hovered, setHovered] = useState(false);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
+  const [videoTexture, setVideoTexture] = useState<THREE.VideoTexture | null>(null);
 
   // Resilient texture loader with proper cleanup
   useEffect(() => {
@@ -58,14 +57,10 @@ function Card({
         tex.colorSpace = THREE.SRGBColorSpace;
         loadedTex = tex;
         setTexture(tex);
-        setLoadFailed(false);
       },
       undefined,
       (err) => {
         console.warn(`Failed to load texture for "${project.title}":`, err);
-        if (active) {
-          setLoadFailed(true);
-        }
       }
     );
 
@@ -76,6 +71,46 @@ function Card({
       }
     };
   }, [project.image, project.title]);
+
+  // Resilient video loader with proper cleanup
+  useEffect(() => {
+    if (!project.video) return;
+
+    let active = true;
+    const video = document.createElement('video');
+    video.src = project.video;
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.width = 1280;
+    video.height = 720;
+    video.setAttribute('decoding', 'async');
+    videoRef.current = video;
+
+    const tex = new THREE.VideoTexture(video);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    
+    if (active) {
+      requestAnimationFrame(() => {
+        if (active) {
+          setVideoTexture(tex);
+          video.play().catch(() => {});
+        }
+      });
+    }
+
+    return () => {
+      active = false;
+      video.pause();
+      video.src = '';
+      video.load();
+      tex.dispose();
+      videoRef.current = null;
+    };
+  }, [project.video]);
 
   useFrame((state) => {
     if (!meshRef.current) return;
@@ -90,12 +125,27 @@ function Card({
     rel -= total / 2;
 
     const dist = Math.abs(rel);
+
+    // Play all videos continuously
+    if (videoRef.current && videoRef.current.paused) {
+      videoRef.current.play().catch(() => {});
+    }
+
+    // Dynamic texture swapping in Three.js render loop to show video playing on all cards
+    if (materialRef.current) {
+      const activeTexture = videoTexture ? videoTexture : texture;
+      if (materialRef.current.map !== activeTexture) {
+        materialRef.current.map = activeTexture;
+        materialRef.current.needsUpdate = true;
+      }
+    }
+
     const offset = OFFSETS[index % OFFSETS.length];
 
     // Responsive position coefficients
     const isMobile = state.viewport.width < 8;
-    const spreadX = isMobile ? 1.1 : 1.7;
-    const driftY = isMobile ? -0.2 : -0.32;
+    const spreadX = isMobile ? 1.6 : 2.5;
+    const driftY = isMobile ? -0.26 : -0.42;
 
     const targetX = offset.x + rel * spreadX;
     const targetY = offset.y + rel * driftY + Math.sin(t * 0.8 + index * 1.3) * 0.04;
@@ -114,7 +164,7 @@ function Card({
     meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, targetRZ, 0.08);
 
     // active focus scaling
-    const activeScale = hovered ? 1.05 : 1.0;
+    const activeScale = hovered ? 1.08 : 1.0;
     const targetScale = Math.max(0.72, 1 - dist * 0.12) * activeScale;
     meshRef.current.scale.setScalar(THREE.MathUtils.lerp(meshRef.current.scale.x, targetScale, 0.08));
   });
@@ -137,21 +187,14 @@ function Card({
         onHoverChange(false);
       }}
     >
-      <planeGeometry args={[2.2, 3]} />
-      {texture ? (
-        <meshBasicMaterial
-          map={texture}
-          transparent
-          opacity={0.85}
-          toneMapped={false}
-        />
-      ) : (
-        <meshBasicMaterial
-          color="#141414"
-          transparent
-          opacity={0.85}
-        />
-      )}
+      <planeGeometry args={[4.8, 2.7]} />
+      <meshBasicMaterial
+        ref={materialRef}
+        map={texture}
+        transparent
+        opacity={0.85}
+        toneMapped={false}
+      />
     </mesh>
   );
 }
@@ -195,56 +238,55 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
 
   const containerRef = useRef<HTMLDivElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
-  const scrollTriggerInstance = useRef<ScrollTrigger | null>(null);
 
   // Shared scroll values
   const scroll = useRef(0);
   const targetScroll = useRef(0);
   const lastActiveIndex = useRef(0);
   const isDraggingRef = useRef(false);
+  const lastWheelTime = useRef(0);
 
   // Drag interaction values
   const pointerDownRef = useRef<{ x: number; y: number; scrollVal: number } | null>(null);
 
   useEffect(() => {
-    setMounted(true);
-    gsap.registerPlugin(ScrollTrigger);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
-  // Set up ScrollTrigger pinning
+  // Set up custom wheel listener for smooth scrolling and auto-drift
   useEffect(() => {
-    if (!mounted || !containerRef.current || projects.length === 0) return;
+    if (!mounted || !containerRef.current) return;
 
-    // Pinning the showcase section for smooth, scroll-driven rotation
-    const trigger = ScrollTrigger.create({
-      trigger: containerRef.current,
-      start: 'top top',
-      end: '+=2500',
-      pin: true,
-      scrub: true,
-      onUpdate: (self) => {
-        if (isDraggingRef.current) return;
-        // Map 0 -> 1 progress to two full project listing loops
-        targetScroll.current = self.progress * (projects.length * 2);
-      },
-    });
+    const handleWheel = (e: WheelEvent) => {
+      lastWheelTime.current = Date.now();
 
-    scrollTriggerInstance.current = trigger;
+      const container = containerRef.current;
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      // Only rotate the carousel if the Showcase is in viewport view
+      if (rect.top < window.innerHeight && rect.bottom > 0) {
+        const wheelSensitivity = 0.0004;
+        targetScroll.current += e.deltaY * wheelSensitivity;
+      }
+    };
+
+    const container = containerRef.current;
+    container.addEventListener('wheel', handleWheel, { passive: true });
 
     return () => {
-      trigger.kill();
+      container.removeEventListener('wheel', handleWheel);
     };
-  }, [mounted, projects.length]);
+  }, [mounted]);
 
   // Reset scroll state on category change
   useEffect(() => {
     scroll.current = 0;
     targetScroll.current = 0;
     lastActiveIndex.current = 0;
-    setActiveIndex(0);
-    if (scrollTriggerInstance.current) {
-      scrollTriggerInstance.current.scroll(scrollTriggerInstance.current.start);
-    }
+    const timer = setTimeout(() => setActiveIndex(0), 0);
+    return () => clearTimeout(timer);
   }, [projects]);
 
   // Main lerping animation tick
@@ -257,6 +299,12 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
       if (n === 0) {
         frameId = requestAnimationFrame(tick);
         return;
+      }
+
+      // Cinematic slow auto-drift when not actively scrolling/dragging/hovering
+      const isIdle = (Date.now() - lastWheelTime.current > 1500) && !isDraggingRef.current && !isHoveringGrid;
+      if (isIdle) {
+        targetScroll.current += 0.0006;
       }
 
       // Smooth lerp
@@ -318,10 +366,11 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
 
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [mounted, projects.length, viewMode]);
+  }, [mounted, projects.length, viewMode, isHoveringGrid]);
 
   // Pointer drag gestures to manually spin the carousel
   const handlePointerDown = (e: React.PointerEvent) => {
+    isDraggingRef.current = true;
     pointerDownRef.current = {
       x: e.clientX,
       y: e.clientY,
@@ -335,27 +384,9 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
     const deltaX = e.clientX - pointerDownRef.current.x;
     
     // Convert drag pixel displacement to scroll units
-    const sensitivity = window.innerWidth < 768 ? 2.5 : 1.8;
+    const sensitivity = window.innerWidth < 768 ? 1.5 : 1.0;
     const scrollDelta = -(deltaX / window.innerWidth) * sensitivity;
     targetScroll.current = pointerDownRef.current.scrollVal + scrollDelta;
-
-    // Sync window scrollbar to keep GSAP and layout matches
-    const numProjects = projects.length;
-    if (numProjects > 0 && scrollTriggerInstance.current) {
-      const trigger = scrollTriggerInstance.current;
-      const maxScroll = numProjects * 2;
-      let normalized = targetScroll.current % maxScroll;
-      if (normalized < 0) normalized += maxScroll;
-
-      const progress = normalized / maxScroll;
-      const targetY = trigger.start + progress * (trigger.end - trigger.start);
-
-      isDraggingRef.current = true;
-      window.scrollTo(0, targetY);
-      setTimeout(() => {
-        isDraggingRef.current = false;
-      }, 10);
-    }
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
@@ -363,6 +394,7 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
       pointerDownRef.current = null;
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
+    isDraggingRef.current = false;
   };
 
   if (!mounted) {
@@ -420,6 +452,7 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
         className={`absolute inset-0 transition-opacity duration-700 ease-out z-10 ${
           viewMode === 'grid' ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
+        style={{ touchAction: 'pan-y' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -443,9 +476,12 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
         className={`absolute inset-0 transition-opacity duration-700 ease-out z-20 ${
           viewMode === 'list' ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
+        style={{ touchAction: 'pan-y' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerOver={() => setIsHoveringGrid(true)}
+        onPointerOut={() => setIsHoveringGrid(false)}
       >
         {doubledProjects.map((project, idx) => (
           <button
