@@ -80,7 +80,8 @@ function Card({
     let active = true;
     const video = document.createElement('video');
     video.crossOrigin = 'anonymous';
-    video.src = project.video;
+    const separator = project.video.includes('?') ? '&' : '?';
+    video.src = `${project.video}${separator}cv=1`;
     video.muted = true;
     video.loop = true;
     video.playsInline = true;
