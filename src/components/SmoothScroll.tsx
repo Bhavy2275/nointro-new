@@ -1,17 +1,14 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Lenis from 'lenis';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-declare global {
-  interface Window {
-    lenisInstance?: Lenis;
-  }
-}
+import { SmoothScrollContext } from '@/context/SmoothScrollContext';
 
 export default function SmoothScroll({ children }: { children: React.ReactNode }) {
+  const [lenisInstance, setLenisInstance] = useState<Lenis | null>(null);
+
   useEffect(() => {
     // Only run on client
     if (typeof window === 'undefined') return;
@@ -41,16 +38,22 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     gsap.ticker.add(tick);
     gsap.ticker.lagSmoothing(0);
 
-    // Store lenis globally for optional anchor scrolls
-    window.lenisInstance = lenis;
+    const timer = setTimeout(() => {
+      setLenisInstance(lenis);
+    }, 0);
 
     // Clean up
     return () => {
+      clearTimeout(timer);
       lenis.destroy();
       gsap.ticker.remove(tick);
-      delete window.lenisInstance;
+      setLenisInstance(null);
     };
   }, []);
 
-  return <div className="w-full flex-grow">{children}</div>;
+  return (
+    <SmoothScrollContext.Provider value={lenisInstance}>
+      <div className="w-full flex-grow">{children}</div>
+    </SmoothScrollContext.Provider>
+  );
 }

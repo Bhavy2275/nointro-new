@@ -4,6 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { AGENCY_CONFIG } from '@/config/agency';
+
 export default function Footer() {
   const pathname = usePathname();
   if (pathname === '/') return null;
@@ -54,13 +56,13 @@ export default function Footer() {
             Contact
           </h4>
           <div className="flex flex-col gap-3 font-secondary text-xs text-white/70 leading-relaxed">
-            <span>Based in Paris, France</span>
+            <span>Based in {AGENCY_CONFIG.contact.location}</span>
             <span>Available Worldwide</span>
             <a
-              href="mailto:hello@nointro.agency"
+              href={`mailto:${AGENCY_CONFIG.contact.email}`}
               className="hover:text-white transition-colors underline underline-offset-4"
             >
-              hello@nointro.agency
+              {AGENCY_CONFIG.contact.email}
             </a>
           </div>
         </div>
@@ -71,14 +73,10 @@ export default function Footer() {
             Follow Us
           </h4>
           <div className="flex flex-col gap-3">
-            {[
-              { platform: 'Instagram', href: 'https://instagram.com/' },
-              { platform: 'TikTok', href: 'https://tiktok.com/' },
-              { platform: 'LinkedIn', href: 'https://linkedin.com/' }
-            ].map((social) => (
+            {AGENCY_CONFIG.socials.map((social) => (
               <a
                 key={social.platform}
-                href={social.href}
+                href={social.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-primary font-normal text-xs text-white/70 hover:text-white transition-colors"

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { Project } from './projects';
+import ErrorBoundary from './ErrorBoundary';
 
 interface BradyShowcaseProps {
   projects: Project[];
@@ -39,7 +40,7 @@ function Card({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [hovered, setHovered] = useState(false);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
-  const [videoTexture, setVideoTexture] = useState<THREE.VideoTexture | null>(null);
+  const videoTextureRef = useRef<THREE.VideoTexture | null>(null);
 
   // Resilient texture loader with proper cleanup
   useEffect(() => {
@@ -95,15 +96,26 @@ function Card({
     tex.magFilter = THREE.LinearFilter;
     
     if (active) {
-      setVideoTexture(tex);
+      videoTextureRef.current = tex;
     }
 
     return () => {
       active = false;
-      video.pause();
-      video.src = '';
-      video.load();
-      tex.dispose();
+      if (video) {
+        try {
+          video.pause();
+          video.src = '';
+          video.load();
+        } catch (err) {
+          console.warn("Video cleanup failed:", err);
+        }
+      }
+      if (tex) {
+        try {
+          tex.dispose();
+        } catch {}
+      }
+      videoTextureRef.current = null;
       videoRef.current = null;
     };
   }, [project.video]);
@@ -141,7 +153,7 @@ function Card({
 
     // Dynamic texture swapping: show video texture only when centered, otherwise static image
     if (materialRef.current) {
-      const activeTexture = (isCentered && videoTexture) ? videoTexture : texture;
+      const activeTexture = (isCentered && videoTextureRef.current) ? videoTextureRef.current : texture;
       if (materialRef.current.map !== activeTexture) {
         materialRef.current.map = activeTexture;
         materialRef.current.needsUpdate = true;
@@ -466,16 +478,18 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
         onPointerUp={handlePointerUp}
         data-cursor={isHoveringGrid ? 'view' : undefined}
       >
-        <Canvas camera={{ position: [0, 0, 5], fov: 50 }} gl={{ alpha: true }}>
-          {projects.length > 0 && (
-            <GridScene
-              projects={projects}
-              scrollRef={scroll}
-              onCardClick={onCardClick}
-              onHoverChange={setIsHoveringGrid}
-            />
-          )}
-        </Canvas>
+        <ErrorBoundary>
+          <Canvas camera={{ position: [0, 0, 5], fov: 50 }} gl={{ alpha: true }}>
+            {projects.length > 0 && (
+              <GridScene
+                projects={projects}
+                scrollRef={scroll}
+                onCardClick={onCardClick}
+                onHoverChange={setIsHoveringGrid}
+              />
+            )}
+          </Canvas>
+        </ErrorBoundary>
       </div>
 
       {/* List View Container */}

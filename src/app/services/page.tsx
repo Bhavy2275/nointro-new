@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, use } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ChevronRight, ChevronDown } from 'lucide-react';
@@ -63,15 +63,7 @@ const services = [
   }
 ];
 
-interface PageProps {
-  params: Promise<Record<string, string | string[] | undefined>>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-export default function ServicesPage(props: PageProps) {
-  // Unwrap Next.js 15+ dynamic route/search parameters promises
-  use(props.params);
-  use(props.searchParams);
+export default function ServicesPage() {
 
   const [expandedService, setExpandedService] = useState<string | null>('production');
   const containerRef = useRef<HTMLDivElement>(null);

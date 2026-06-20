@@ -1,9 +1,10 @@
 'use client';
 
-/* eslint-disable react/no-unknown-property */
+
 import * as THREE from 'three';
 import { useRef, useState, useEffect, memo, ReactNode, Suspense } from 'react';
 import { Canvas, createPortal, useFrame, useThree, ThreeElements } from '@react-three/fiber';
+import ErrorBoundary from './ErrorBoundary';
 import {
   useFBO,
   useGLTF,
@@ -47,20 +48,22 @@ export default function FluidGlass({ mode = 'lens', lensProps = {}, barProps = {
   delete modeProps.navItems;
 
   return (
-    <Canvas camera={{ position: [0, 0, 20], fov: 15 }} gl={{ alpha: true }}>
-      <ScrollControls damping={0.2} pages={3} distance={0.4}>
-        {mode === 'bar' && <NavItems items={navItems as NavItem[]} />}
-        <Suspense fallback={null}>
-          <Wrapper modeProps={modeProps}>
-            <Scroll>
-              <Typography />
-              <Images />
-            </Scroll>
-            <Preload />
-          </Wrapper>
-        </Suspense>
-      </ScrollControls>
-    </Canvas>
+    <ErrorBoundary>
+      <Canvas camera={{ position: [0, 0, 20], fov: 15 }} gl={{ alpha: true }}>
+        <ScrollControls damping={0.2} pages={3} distance={0.4}>
+          {mode === 'bar' && <NavItems items={navItems as NavItem[]} />}
+          <Suspense fallback={null}>
+            <Wrapper modeProps={modeProps}>
+              <Scroll>
+                <Typography />
+                <Images />
+              </Scroll>
+              <Preload />
+            </Wrapper>
+          </Suspense>
+        </ScrollControls>
+      </Canvas>
+    </ErrorBoundary>
   );
 }
 
@@ -201,15 +204,14 @@ function NavItems({ items }: { items: NavItem[] }) {
     tablet: { max: 1023, spacing: 0.24, fontSize: 0.045 },
     desktop: { max: Infinity, spacing: 0.3, fontSize: 0.045 }
   };
-  const getDevice = () => {
-    if (typeof window === 'undefined') return 'desktop';
-    const w = window.innerWidth;
-    return w <= DEVICE.mobile.max ? 'mobile' : w <= DEVICE.tablet.max ? 'tablet' : 'desktop';
-  };
-
   const [device, setDevice] = useState<keyof typeof DEVICE>('desktop');
 
   useEffect(() => {
+    const getDevice = () => {
+      if (typeof window === 'undefined') return 'desktop';
+      const w = window.innerWidth;
+      return w <= DEVICE.mobile.max ? 'mobile' : w <= DEVICE.tablet.max ? 'tablet' : 'desktop';
+    };
     const handleResize = () => {
       setDevice(getDevice());
     };
@@ -219,7 +221,7 @@ function NavItems({ items }: { items: NavItem[] }) {
       clearTimeout(timer);
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [DEVICE.mobile.max, DEVICE.tablet.max]);
 
   const { spacing, fontSize } = DEVICE[device];
 
@@ -289,11 +291,11 @@ function Images() {
 
   return (
     <group ref={group}>
-      <Image position={[-2, 0, 0]} scale={[3, height / 1.1]} url="/assets/demo/cs1.webp" />
-      <Image position={[2, 0, 3]} scale={3} url="/assets/demo/cs2.webp" />
-      <Image position={[-2.05, -height, 6]} scale={[1, 3]} url="/assets/demo/cs3.webp" />
-      <Image position={[-0.6, -height, 9]} scale={[1, 2]} url="/assets/demo/cs1.webp" />
-      <Image position={[0.75, -height, 10.5]} scale={1.5} url="/assets/demo/cs2.webp" />
+      <Image position={[-2, 0, 0]} scale={[3, height / 1.1]} url="/assets/demo/cs1.webp" {...{ alt: "Cinematic editorial branding cover" }} />
+      <Image position={[2, 0, 3]} scale={3} url="/assets/demo/cs2.webp" {...{ alt: "Corporate commercial media showcase" }} />
+      <Image position={[-2.05, -height, 6]} scale={[1, 3]} url="/assets/demo/cs3.webp" {...{ alt: "Creative portfolio background design" }} />
+      <Image position={[-0.6, -height, 9]} scale={[1, 2]} url="/assets/demo/cs1.webp" {...{ alt: "Social strategy campaigns preview" }} />
+      <Image position={[0.75, -height, 10.5]} scale={1.5} url="/assets/demo/cs2.webp" {...{ alt: "Aerial photography drone captures" }} />
     </group>
   );
 }
@@ -304,15 +306,14 @@ function Typography() {
     tablet: { fontSize: 0.4 },
     desktop: { fontSize: 0.6 }
   };
-  const getDevice = () => {
-    if (typeof window === 'undefined') return 'desktop';
-    const w = window.innerWidth;
-    return w <= 639 ? 'mobile' : w <= 1023 ? 'tablet' : 'desktop';
-  };
-
   const [device, setDevice] = useState<keyof typeof DEVICE>('desktop');
 
   useEffect(() => {
+    const getDevice = () => {
+      if (typeof window === 'undefined') return 'desktop';
+      const w = window.innerWidth;
+      return w <= 639 ? 'mobile' : w <= 1023 ? 'tablet' : 'desktop';
+    };
     const handleResize = () => {
       setDevice(getDevice());
     };

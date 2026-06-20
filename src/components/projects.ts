@@ -2,6 +2,8 @@
 // The `gradient` field is a full CSS gradient string used as card background.
 // The `meta` field is an open key-value record for editorial metadata (client, year, role, etc.).
 
+import { AGENCY_CONFIG } from '../config/agency';
+
 export interface Project {
   id: string;
   title: string;
@@ -75,7 +77,7 @@ export const projects: Project[] = [
     gradient: 'linear-gradient(160deg, #0a0a1a 0%, #12121a 100%)',
     image:
       'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200&auto=format&fit=crop',
-    video: '/videos/OP MUSIC VIDEO 2023.mp4',
+    video: AGENCY_CONFIG.projectsVideos.project5,
     meta: { Client: 'OP Artist', Year: '2023', Role: 'Direction & Editing' },
   },
   {

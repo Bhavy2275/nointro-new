@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, use } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -8,6 +8,8 @@ import { ArrowDown } from 'lucide-react';
 import ProjectOverlay from '@/components/ProjectOverlay';
 import { projects as marqueeProjects, Project } from '@/components/projects';
 import dynamic from 'next/dynamic';
+import { useLenis } from '@/context/SmoothScrollContext';
+import { AGENCY_CONFIG } from '@/config/agency';
 
 const Agentation = dynamic(
   () => import('agentation').then((mod) => mod.Agentation),
@@ -28,24 +30,10 @@ const BradyShowcase = dynamic(
   }
 );
 
-
-// Host your video externally (e.g. on Vercel Blob, Cloudinary, AWS S3) and paste the HTTPS URL below.
-// Local '/videos/hero.mp4' will fall back to the poster image on the live Vercel site since it is gitignored.
-const HERO_VIDEO_URL = 'https://22icqgouubbjklkh.public.blob.vercel-storage.com/hero.mp4';
-
-
-
 const categories = ['all', 'cinematic', 'commercial', 'lifestyle', 'aerial'];
 
-interface PageProps {
-  params: Promise<Record<string, string | string[] | undefined>>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-export default function HomePage(props: PageProps) {
-  // Unwrap the Next.js 15+ dynamic route/search parameters promises using React.use()
-  use(props.params);
-  use(props.searchParams);
+export default function HomePage() {
+  const lenis = useLenis();
 
   const [activeCategory, setActiveCategory] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -120,7 +108,6 @@ export default function HomePage(props: PageProps) {
   const scrollToWork = () => {
     const workSection = document.getElementById('work');
     if (workSection) {
-      const lenis = (window as unknown as { lenisInstance?: { scrollTo: (target: HTMLElement) => void } }).lenisInstance;
       if (lenis) {
         lenis.scrollTo(workSection);
       } else {
@@ -160,7 +147,7 @@ export default function HomePage(props: PageProps) {
               loop
               playsInline
               preload="auto"
-              src={HERO_VIDEO_URL}
+              src={AGENCY_CONFIG.heroVideoUrl}
             />
           </div>
           {/* Bottom Dark Gradient Overlay */}
@@ -215,8 +202,8 @@ export default function HomePage(props: PageProps) {
           <div className="hero-stat-anim absolute right-[6%] top-[22%] flex flex-col items-end pointer-events-auto text-right font-primary z-40 hidden sm:flex opacity-0">
             <div className="relative animate-pulse duration-[3000ms]">
               <div className="w-12 h-[1px] bg-white/20 absolute -left-14 top-4 -rotate-[30deg] origin-right" />
-              <span className="block font-black text-xl md:text-2xl tracking-tight text-white">+150M</span>
-              <span className="block text-[8px] md:text-[9px] tracking-widest text-white/50 uppercase mt-0.5">views generated</span>
+              <span className="block font-black text-xl md:text-2xl tracking-tight text-white">{AGENCY_CONFIG.stats[0].value}</span>
+              <span className="block text-[8px] md:text-[9px] tracking-widest text-white/50 uppercase mt-0.5">{AGENCY_CONFIG.stats[0].label}</span>
             </div>
           </div>
 
@@ -224,8 +211,8 @@ export default function HomePage(props: PageProps) {
           <div className="hero-stat-anim absolute left-[6%] bottom-[7%] flex flex-col items-start pointer-events-auto text-left font-primary z-40 hidden sm:flex opacity-0">
             <div className="relative">
               <div className="w-12 h-[1px] bg-white/20 absolute -right-14 top-4 rotate-[30deg] origin-left" />
-              <span className="block font-black text-xl md:text-2xl tracking-tight text-white">+100+</span>
-              <span className="block text-[8px] md:text-[9px] tracking-widest text-white/50 uppercase mt-0.5">campaigns delivered</span>
+              <span className="block font-black text-xl md:text-2xl tracking-tight text-white">{AGENCY_CONFIG.stats[1].value}</span>
+              <span className="block text-[8px] md:text-[9px] tracking-widest text-white/50 uppercase mt-0.5">{AGENCY_CONFIG.stats[1].label}</span>
             </div>
           </div>
 
@@ -233,8 +220,8 @@ export default function HomePage(props: PageProps) {
           <div className="hero-stat-anim absolute right-[6%] bottom-[7%] flex flex-col items-end pointer-events-auto text-right font-primary z-40 hidden sm:flex opacity-0">
             <div className="relative">
               <div className="w-12 h-[1px] bg-white/20 absolute -left-14 top-4 -rotate-[30deg] origin-right" />
-              <span className="block font-black text-xl md:text-2xl tracking-tight text-white">+15</span>
-              <span className="block text-[8px] md:text-[9px] tracking-widest text-white/50 uppercase mt-0.5">global awards</span>
+              <span className="block font-black text-xl md:text-2xl tracking-tight text-white">{AGENCY_CONFIG.stats[2].value}</span>
+              <span className="block text-[8px] md:text-[9px] tracking-widest text-white/50 uppercase mt-0.5">{AGENCY_CONFIG.stats[2].label}</span>
             </div>
           </div>
         </div>

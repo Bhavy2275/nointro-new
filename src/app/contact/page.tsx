@@ -1,21 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect } from 'react';
 import { gsap } from 'gsap';
 import { MessageSquare, Mail, Phone, MapPin } from 'lucide-react';
+import { AGENCY_CONFIG } from '@/config/agency';
 
-interface PageProps {
-  params: Promise<Record<string, string | string[] | undefined>>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-export default function ContactPage(props: PageProps) {
-  // Unwrap Next.js 15+ dynamic route/search parameters promises
-  use(props.params);
-  use(props.searchParams);
-
+export default function ContactPage() {
   const [formState, setFormState] = useState({ name: '', email: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     // Entrance animations
@@ -25,16 +19,36 @@ export default function ContactPage(props: PageProps) {
     );
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formState.name || !formState.email || !formState.message) return;
     
-    // Simulate submission
-    setSubmitted(true);
-    setTimeout(() => {
-      setFormState({ name: '', email: '', message: '' });
-      setSubmitted(false);
-    }, 3000);
+    setSending(true);
+    setErrorMsg('');
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formState),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setSubmitted(true);
+        setFormState({ name: '', email: '', message: '' });
+        setTimeout(() => {
+          setSubmitted(false);
+        }, 5000);
+      } else {
+        setErrorMsg(data.error || 'Failed to send message. Please try again.');
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('An unexpected error occurred. Please try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -62,22 +76,22 @@ export default function ContactPage(props: PageProps) {
               
               <div className="flex items-center gap-4 text-white/70">
                 <Mail size={16} />
-                <a href="mailto:hello@nointro.agency" className="font-secondary text-xs uppercase tracking-wider hover:text-white transition-colors">
-                  hello@nointro.agency
+                <a href={`mailto:${AGENCY_CONFIG.contact.email}`} className="font-secondary text-xs uppercase tracking-wider hover:text-white transition-colors">
+                  {AGENCY_CONFIG.contact.email}
                 </a>
               </div>
 
               <div className="flex items-center gap-4 text-white/70">
                 <Phone size={16} />
-                <a href="tel:+33662606482" className="font-secondary text-xs uppercase tracking-wider hover:text-white transition-colors">
-                  +33 6 62 60 64 82
+                <a href={`tel:${AGENCY_CONFIG.contact.phoneDial}`} className="font-secondary text-xs uppercase tracking-wider hover:text-white transition-colors">
+                  {AGENCY_CONFIG.contact.phone}
                 </a>
               </div>
 
               <div className="flex items-center gap-4 text-white/70">
                 <MapPin size={16} />
                 <span className="font-secondary text-xs uppercase tracking-wider">
-                  Paris, France // Available Internationally
+                  {AGENCY_CONFIG.contact.location} {"// Available Internationally"}
                 </span>
               </div>
 
@@ -85,7 +99,7 @@ export default function ContactPage(props: PageProps) {
 
             {/* WhatsApp CTA */}
             <a
-              href="https://wa.me/33662606482"
+              href={AGENCY_CONFIG.contact.whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
               data-cursor="view"
@@ -160,13 +174,20 @@ export default function ContactPage(props: PageProps) {
                 />
               </div>
 
+              {errorMsg && (
+                <div className="text-red-500 font-secondary text-[11px] uppercase tracking-wide">
+                  {errorMsg}
+                </div>
+              )}
+
               {/* Submit Button */}
               <button
                 type="submit"
                 data-cursor="view"
-                className="mt-4 bg-white text-black font-primary font-black text-xs tracking-[0.25em] py-4 hover:bg-transparent hover:text-white border border-white transition-all duration-300 uppercase"
+                disabled={sending}
+                className="mt-4 bg-white text-black font-primary font-black text-xs tracking-[0.25em] py-4 hover:bg-transparent hover:text-white border border-white transition-all duration-300 uppercase disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Send Message
+                {sending ? 'Sending...' : 'Send Message'}
               </button>
 
             </form>

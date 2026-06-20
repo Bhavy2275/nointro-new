@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation';
 import { Menu, X, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { useLenis } from '@/context/SmoothScrollContext';
+
 const navLinks = [
   { label: 'Home', href: '/' },
   {
@@ -37,6 +39,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const pathname = usePathname();
+  const lenis = useLenis();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -66,7 +69,6 @@ export default function Navbar() {
       const targetElement = document.getElementById(targetId);
       if (targetElement) {
         e.preventDefault();
-        const lenis = (window as unknown as { lenisInstance?: { scrollTo: (target: HTMLElement) => void } }).lenisInstance;
         if (lenis) {
           lenis.scrollTo(targetElement);
         } else {

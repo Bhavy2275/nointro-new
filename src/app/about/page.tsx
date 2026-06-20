@@ -1,31 +1,11 @@
 'use client';
 
-import React, { useEffect, useRef, use } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { AGENCY_CONFIG } from '@/config/agency';
 
-const teamMembers = [
-  { name: 'Alexandre Gambier', role: 'Founder & Director', image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=600' },
-  { name: 'Sophie Laurent', role: 'Head of Brand Strategy', image: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&q=80&w=600' },
-  { name: 'Marc Dupuis', role: 'Chief Cinematographer', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=600' }
-];
-
-const gearList = [
-  { category: 'Camera Bodies', items: ['RED V-Raptor 8K VV', 'Sony FX6 Cinema Camera', 'Sony FX3 B-Cam'] },
-  { category: 'Lenses', items: ['ARRI Signature Primes (18mm, 35mm, 50mm, 85mm)', 'Cooke S4/i Cine Lenses', 'Angenieux EZ Zooms'] },
-  { category: 'Stabilization & Aerial', items: ['DJI Inspire 3 (X9-8K Air)', 'DJI Ronin 2 Gimbal', 'Freefly Systems MōVI Pro'] },
-  { category: 'Post Production', items: ['DaVinci Resolve Studio Suite', 'Adobe Creative Cloud Suite', 'LTO Archive Systems'] }
-];
-
-interface PageProps {
-  params: Promise<Record<string, string | string[] | undefined>>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-export default function AboutPage(props: PageProps) {
-  // Unwrap Next.js 15+ dynamic route/search parameters promises
-  use(props.params);
-  use(props.searchParams);
+export default function AboutPage() {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -92,7 +72,7 @@ export default function AboutPage(props: PageProps) {
             Core Team
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {teamMembers.map((member) => (
+            {AGENCY_CONFIG.team.map((member) => (
               <div key={member.name} className="flex flex-col gap-4 group">
                 <div className="aspect-[3/4] relative overflow-hidden bg-neutral-900 border border-white/5">
                   <div
@@ -120,7 +100,7 @@ export default function AboutPage(props: PageProps) {
             Production Arsenal
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {gearList.map((category) => (
+            {AGENCY_CONFIG.gear.map((category) => (
               <div key={category.category} className="flex flex-col gap-4 p-6 bg-white/5 border border-white/10">
                 <h3 className="font-primary font-black text-xs tracking-[0.2em] text-white uppercase border-b border-white/10 pb-2">
                   {category.category}

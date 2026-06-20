@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, Suspense, use } from 'react';
+import React, { useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { gsap } from 'gsap';
@@ -202,15 +202,7 @@ function WorkContent() {
   );
 }
 
-interface PageProps {
-  params: Promise<Record<string, string | string[] | undefined>>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-export default function WorkPage(props: PageProps) {
-  // Unwrap Next.js 15+ dynamic route/search parameters promises
-  use(props.params);
-  use(props.searchParams);
+export default function WorkPage() {
 
   return (
     <section className="bg-black pt-32 pb-16 md:pt-40 md:pb-24 px-6 md:px-12 w-full">

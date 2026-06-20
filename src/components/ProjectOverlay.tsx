@@ -4,15 +4,11 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import type { Project } from './projects';
+import { useLenis } from '@/context/SmoothScrollContext';
 
 interface ProjectOverlayProps {
   project: Project;
   onClose: () => void;
-}
-
-function getLenis() {
-  if (typeof window === 'undefined') return null;
-  return window.lenisInstance ?? null;
 }
 
 export default function ProjectOverlay({ project, onClose }: ProjectOverlayProps) {
@@ -21,15 +17,15 @@ export default function ProjectOverlay({ project, onClose }: ProjectOverlayProps
   const heroRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const tl = useRef<gsap.core.Timeline | null>(null);
+  const lenis = useLenis();
 
   // ── Pause scroll behavior of background on overlay mount, resume on unmount ──
   useEffect(() => {
-    const lenis = getLenis();
     lenis?.stop();
     return () => {
       lenis?.start();
     };
-  }, []);
+  }, [lenis]);
 
   // ── GSAP Entrance Animation Timeline ──
   useGSAP(
