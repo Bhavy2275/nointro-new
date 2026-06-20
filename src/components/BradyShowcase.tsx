@@ -83,7 +83,7 @@ function Card({
     video.muted = true;
     video.loop = true;
     video.playsInline = true;
-    video.preload = 'auto';
+    video.preload = 'metadata'; // Use 'metadata' to avoid loading the full video initially
     video.width = 1280;
     video.height = 720;
     video.setAttribute('decoding', 'async');
@@ -95,12 +95,7 @@ function Card({
     tex.magFilter = THREE.LinearFilter;
     
     if (active) {
-      requestAnimationFrame(() => {
-        if (active) {
-          setVideoTexture(tex);
-          video.play().catch(() => {});
-        }
-      });
+      setVideoTexture(tex);
     }
 
     return () => {
@@ -126,15 +121,27 @@ function Card({
     rel -= total / 2;
 
     const dist = Math.abs(rel);
+    const isCentered = dist < 0.5;
 
-    // Play all videos continuously
-    if (videoRef.current && videoRef.current.paused) {
-      videoRef.current.play().catch(() => {});
+    // Only play video if card is centered
+    if (videoRef.current) {
+      if (isCentered) {
+        if (videoRef.current.paused) {
+          if (videoRef.current.preload !== 'auto') {
+            videoRef.current.preload = 'auto';
+          }
+          videoRef.current.play().catch(() => {});
+        }
+      } else {
+        if (!videoRef.current.paused) {
+          videoRef.current.pause();
+        }
+      }
     }
 
-    // Dynamic texture swapping in Three.js render loop to show video playing on all cards
+    // Dynamic texture swapping: show video texture only when centered, otherwise static image
     if (materialRef.current) {
-      const activeTexture = videoTexture ? videoTexture : texture;
+      const activeTexture = (isCentered && videoTexture) ? videoTexture : texture;
       if (materialRef.current.map !== activeTexture) {
         materialRef.current.map = activeTexture;
         materialRef.current.needsUpdate = true;
