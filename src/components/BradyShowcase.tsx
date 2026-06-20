@@ -333,22 +333,30 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
       scroll.current += diff * 0.08;
 
       // Wrap scroll values seamlessly
-      if (targetScroll.current >= n) {
+      while (targetScroll.current >= n) {
         targetScroll.current -= n;
         scroll.current -= n;
-      } else if (targetScroll.current < 0) {
+        if (pointerDownRef.current) {
+          pointerDownRef.current.scrollVal -= n;
+        }
+      }
+      while (targetScroll.current < 0) {
         targetScroll.current += n;
         scroll.current += n;
+        if (pointerDownRef.current) {
+          pointerDownRef.current.scrollVal += n;
+        }
       }
 
       // Update DOM list positions directly
       if (viewMode === 'list' && listContainerRef.current) {
         const items = listContainerRef.current.children;
-        const totalItems = items.length;
+        const totalItems = n;
         const gap = window.innerWidth < 768 ? 52 : 72;
 
         for (let i = 0; i < totalItems; i++) {
           const item = items[i] as HTMLElement;
+          if (!item) continue;
 
           let rel = i - scroll.current;
           rel = ((rel + totalItems / 2) % totalItems);
@@ -428,8 +436,6 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
     );
   }
 
-  // Double list to allow smooth, continuous infinite circular wrapping
-  const doubledProjects = [...projects, ...projects];
 
   return (
     <div
@@ -506,7 +512,7 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
         onPointerOver={() => setIsHoveringGrid(true)}
         onPointerOut={() => setIsHoveringGrid(false)}
       >
-        {doubledProjects.map((project, idx) => (
+        {projects.map((project, idx) => (
           <button
             key={`list-${project.id}-${idx}`}
             onClick={() => onCardClick(project)}
