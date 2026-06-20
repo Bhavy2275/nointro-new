@@ -4,11 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ArrowDown } from 'lucide-react';
 import ProjectOverlay from '@/components/ProjectOverlay';
 import { projects as marqueeProjects, Project } from '@/components/projects';
 import dynamic from 'next/dynamic';
-import { useLenis } from '@/context/SmoothScrollContext';
 import { AGENCY_CONFIG } from '@/config/agency';
 
 const Agentation = dynamic(
@@ -30,13 +28,10 @@ const BradyShowcase = dynamic(
   }
 );
 
-const categories = ['all', 'cinematic', 'commercial', 'lifestyle', 'aerial'];
-
 export default function HomePage() {
-  const lenis = useLenis();
 
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const activeCategory = 'all';
+  const viewMode = 'grid';
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const taglineRef = useRef<HTMLDivElement>(null);
@@ -105,16 +100,6 @@ export default function HomePage() {
   }, []);
 
 
-  const scrollToWork = () => {
-    const workSection = document.getElementById('work');
-    if (workSection) {
-      if (lenis) {
-        lenis.scrollTo(workSection);
-      } else {
-        workSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
-  };
 
   return (
     <div className="w-full bg-black text-white flex flex-col">
@@ -183,24 +168,16 @@ export default function HomePage() {
               ))}
             </h1>
 
-            {/* Description paragraph below the heading */}
             <div className="hero-desc-anim overflow-hidden max-w-[650px] text-center opacity-0">
               <p className="font-secondary text-white/80 text-xs md:text-sm tracking-wide leading-relaxed mb-8">
                 we craft immersive visual identities with utmost care, empowering your brand to skip introductions and make noice everywhere.
               </p>
-              <button
-                onClick={scrollToWork}
-                data-cursor="view"
-                className="discover-work-btn"
-              >
-                Discover Work
-              </button>
             </div>
           </div>
 
           {/* Stat 1: Top Right */}
           <div className="hero-stat-anim absolute right-[6%] top-[22%] flex flex-col items-end pointer-events-auto text-right font-primary z-40 hidden sm:flex opacity-0">
-            <div className="relative animate-pulse duration-[3000ms]">
+            <div className="relative">
               <div className="w-12 h-[1px] bg-white/20 absolute -left-14 top-4 -rotate-[30deg] origin-right" />
               <span className="block font-black text-xl md:text-2xl tracking-tight text-white">{AGENCY_CONFIG.stats[0].value}</span>
               <span className="block text-[8px] md:text-[9px] tracking-widest text-white/50 uppercase mt-0.5">{AGENCY_CONFIG.stats[0].label}</span>
@@ -226,64 +203,21 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Scroll Indicator Arrow */}
-        <button
-          onClick={scrollToWork}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 text-white/60 hover:text-white transition-colors animate-bounce flex flex-col items-center gap-2"
-        >
-          <span className="font-primary font-bold text-[9px] tracking-[0.2em] uppercase">Scroll</span>
-          <ArrowDown size={14} />
-        </button>
+        {/* Blurry gradient transition overlay */}
+        <div 
+          className="absolute bottom-0 left-0 w-full h-40 pointer-events-none z-20" 
+          style={{
+            background: 'linear-gradient(to top, #0a0a0a 0%, rgba(10, 10, 10, 0.8) 40%, rgba(10, 10, 10, 0) 100%)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            maskImage: 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)',
+            WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)'
+          }}
+        />
       </section>
 
       {/* 2. Portfolio Marquee Section — full-viewport, edge-to-edge */}
       <section id="work" className="w-full bg-[#0a0a0a]">
-        {/* Sticky category tab bar sits above the marquee */}
-        <div className="sticky top-16 md:top-20 z-40 bg-black/90 backdrop-blur-sm border-b border-white/10 py-5 px-6 md:px-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <h2 className="font-primary font-black text-2xl md:text-3xl tracking-wider uppercase">
-            Featured Work
-          </h2>
-          <div className="flex flex-wrap items-center gap-6 md:gap-8">
-            {/* Categories */}
-            <div className="flex flex-wrap gap-x-6 gap-y-2">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`font-primary font-bold text-[10px] tracking-[0.2em] uppercase transition-colors py-1 relative ${
-                    activeCategory === cat ? 'text-white' : 'text-white/40 hover:text-white'
-                  }`}
-                >
-                  {cat}
-                  {activeCategory === cat && (
-                    <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white" />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Grid/List View Toggle */}
-            <div className="flex items-center bg-white/5 border border-white/10 rounded-full p-1 select-none">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`px-4 py-1.5 rounded-full font-primary font-bold text-[10px] tracking-[0.15em] uppercase transition-all duration-300 ${
-                  viewMode === 'grid' ? 'bg-white text-black' : 'text-white/60 hover:text-white'
-                }`}
-              >
-                Grid
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`px-4 py-1.5 rounded-full font-primary font-bold text-[10px] tracking-[0.15em] uppercase transition-all duration-300 ${
-                  viewMode === 'list' ? 'bg-white text-black' : 'text-white/60 hover:text-white'
-                }`}
-              >
-                List
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* Edge-to-edge Brady Perron 3D stack / list showcase */}
         <BradyShowcase
           projects={filteredMarqueeProjects}

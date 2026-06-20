@@ -195,22 +195,23 @@ function Bar({ modeProps = {}, ...p }: { modeProps?: ModeProps } & MeshProps) {
   );
 }
 
+const NAV_DEVICE_CONFIG = {
+  mobile: { max: 639, spacing: 0.2, fontSize: 0.035 },
+  tablet: { max: 1023, spacing: 0.24, fontSize: 0.045 },
+  desktop: { max: Infinity, spacing: 0.3, fontSize: 0.045 }
+};
+
 function NavItems({ items }: { items: NavItem[] }) {
   const group = useRef<THREE.Group>(null!);
   const { viewport, camera } = useThree();
 
-  const DEVICE = {
-    mobile: { max: 639, spacing: 0.2, fontSize: 0.035 },
-    tablet: { max: 1023, spacing: 0.24, fontSize: 0.045 },
-    desktop: { max: Infinity, spacing: 0.3, fontSize: 0.045 }
-  };
-  const [device, setDevice] = useState<keyof typeof DEVICE>('desktop');
+  const [device, setDevice] = useState<keyof typeof NAV_DEVICE_CONFIG>('desktop');
 
   useEffect(() => {
     const getDevice = () => {
       if (typeof window === 'undefined') return 'desktop';
       const w = window.innerWidth;
-      return w <= DEVICE.mobile.max ? 'mobile' : w <= DEVICE.tablet.max ? 'tablet' : 'desktop';
+      return w <= NAV_DEVICE_CONFIG.mobile.max ? 'mobile' : w <= NAV_DEVICE_CONFIG.tablet.max ? 'tablet' : 'desktop';
     };
     const handleResize = () => {
       setDevice(getDevice());
@@ -221,9 +222,9 @@ function NavItems({ items }: { items: NavItem[] }) {
       clearTimeout(timer);
       window.removeEventListener('resize', handleResize);
     };
-  }, [DEVICE.mobile.max, DEVICE.tablet.max]);
+  }, []);
 
-  const { spacing, fontSize } = DEVICE[device];
+  const { spacing, fontSize } = NAV_DEVICE_CONFIG[device];
 
   useFrame(() => {
     if (!group.current) return;
@@ -300,13 +301,14 @@ function Images() {
   );
 }
 
+const TYPO_DEVICE_CONFIG = {
+  mobile: { fontSize: 0.2 },
+  tablet: { fontSize: 0.4 },
+  desktop: { fontSize: 0.6 }
+};
+
 function Typography() {
-  const DEVICE = {
-    mobile: { fontSize: 0.2 },
-    tablet: { fontSize: 0.4 },
-    desktop: { fontSize: 0.6 }
-  };
-  const [device, setDevice] = useState<keyof typeof DEVICE>('desktop');
+  const [device, setDevice] = useState<keyof typeof TYPO_DEVICE_CONFIG>('desktop');
 
   useEffect(() => {
     const getDevice = () => {
@@ -325,7 +327,7 @@ function Typography() {
     };
   }, []);
 
-  const { fontSize } = DEVICE[device];
+  const { fontSize } = TYPO_DEVICE_CONFIG[device];
 
   return (
     <Text

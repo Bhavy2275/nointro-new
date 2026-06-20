@@ -4,7 +4,6 @@ import './globals.css';
 import SmoothScroll from '@/components/SmoothScroll';
 import CustomCursor from '@/components/CustomCursor';
 import PageTransition from '@/components/PageTransition';
-import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import Preloader from '@/components/Preloader';
 
@@ -55,9 +54,6 @@ export default function RootLayout({
         
         {/* Smooth scroll container */}
         <SmoothScroll>
-          {/* Header Navigation */}
-          <Navbar />
-          
           {/* Wipe Transition wrapper */}
           <PageTransition>
             <main className="flex-grow flex flex-col">

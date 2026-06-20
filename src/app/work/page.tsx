@@ -4,93 +4,7 @@ import React, { useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { gsap } from 'gsap';
-
-// Expanded Portfolio Mock Data
-const allWorkItems = [
-  {
-    id: 1,
-    title: 'Echoes of Silence',
-    subtitle: 'Cinematic Short Film',
-    category: 'creative',
-    image: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-video',
-    year: '2026'
-  },
-  {
-    id: 2,
-    title: 'The Future of Speed',
-    subtitle: 'Nike Commercial Campaign',
-    category: 'corporate',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-[4/3]',
-    year: '2026'
-  },
-  {
-    id: 3,
-    title: 'Urban Nomads',
-    subtitle: 'Vogue Lifestyle Editorial',
-    category: 'lifestyle',
-    image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-[3/4]',
-    year: '2025'
-  },
-  {
-    id: 4,
-    title: 'Above the Ridge',
-    subtitle: 'Dolomites Drone Showcase',
-    category: 'aerial',
-    image: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-video',
-    year: '2026'
-  },
-  {
-    id: 5,
-    title: 'Neon Nights',
-    subtitle: 'Tokyo Fashion Week Promo',
-    category: 'lifestyle',
-    image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-video',
-    year: '2025'
-  },
-  {
-    id: 6,
-    title: 'Pure Essence',
-    subtitle: 'Luxury Perfume Commercial',
-    category: 'corporate',
-    image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-[4/3]',
-    year: '2026'
-  },
-  {
-    id: 7,
-    title: 'Midnight Chronicles',
-    subtitle: 'Sci-Fi Film Concept',
-    category: 'creative',
-    image: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-video',
-    year: '2025'
-  },
-  {
-    id: 8,
-    title: 'Decade of Sound',
-    subtitle: 'Electronic Music Festival Aftermovie',
-    category: 'events',
-    image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-[4/3]',
-    year: '2026'
-  },
-  {
-    id: 9,
-    title: 'Cloud Nine Peak',
-    subtitle: 'Mountain Ridge Drone Run',
-    category: 'aerial',
-    image: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&q=80&w=1200',
-    aspect: 'aspect-[3/4]',
-    year: '2026'
-  }
-];
-
-const categories = ['all', 'creative', 'corporate', 'lifestyle', 'events', 'aerial'];
+import { AGENCY_CONFIG } from '@/config/agency';
 
 function WorkContent() {
   const searchParams = useSearchParams();
@@ -99,8 +13,8 @@ function WorkContent() {
   const gridRef = useRef<HTMLDivElement>(null);
 
   const filteredItems = categoryParam === 'all'
-    ? allWorkItems
-    : allWorkItems.filter(item => item.category === categoryParam);
+    ? AGENCY_CONFIG.workItems
+    : AGENCY_CONFIG.workItems.filter(item => item.category === categoryParam);
 
   const handleCategoryChange = (category: string) => {
     if (category === 'all') {
@@ -135,7 +49,7 @@ function WorkContent() {
 
       {/* Filter Options */}
       <div className="flex flex-wrap gap-x-6 gap-y-3 pb-4">
-        {categories.map((cat) => (
+        {AGENCY_CONFIG.workCategories.map((cat) => (
           <button
             key={cat}
             onClick={() => handleCategoryChange(cat)}

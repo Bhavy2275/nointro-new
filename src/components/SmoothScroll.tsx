@@ -27,6 +27,13 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
       touchMultiplier: 1.5,
     });
 
+    // Force scroll to top on refresh/mount
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+    lenis.scrollTo(0, { immediate: true });
+
     // Connect Lenis scroll events to GSAP ScrollTrigger
     lenis.on('scroll', ScrollTrigger.update);
 
@@ -44,6 +51,9 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
 
     // Clean up
     return () => {
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'auto';
+      }
       clearTimeout(timer);
       lenis.destroy();
       gsap.ticker.remove(tick);

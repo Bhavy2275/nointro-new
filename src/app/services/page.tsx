@@ -5,6 +5,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { AGENCY_CONFIG } from '@/config/agency';
 
 const FluidGlass = dynamic(
   () => import('@/components/FluidGlass'),
@@ -12,56 +13,13 @@ const FluidGlass = dynamic(
     ssr: false,
     loading: () => (
       <div className="w-full h-full flex items-center justify-center bg-zinc-950/20 animate-pulse">
-        <span className="font-primary font-bold text-xs tracking-widest text-white/40 uppercase">
+        <span className="font-primary font-bold text-xs tracking-widest text-white/40 uppercase animate-pulse">
           Loading Visual Lab...
         </span>
       </div>
     )
   }
 );
-
-const services = [
-  {
-    id: 'production',
-    num: '01',
-    title: 'Cinematography & Art Direction',
-    subtitle: 'Concepts & Visual Language',
-    description: 'We develop custom conceptual scripts, artistic guides, and cinematic treatments that capture your brand DNA. We manage everything from narrative pacing and creative treatments to storyboarding and casting.',
-    bullets: ['Creative Treatments', 'Scriptwriting & Storyboards', 'Art Direction', 'Production Design']
-  },
-  {
-    id: 'commercial',
-    num: '02',
-    title: 'Commercial Film & Ads',
-    subtitle: 'High-Performance Marketing Campaigns',
-    description: 'Crafting premium, high-impact commercials designed to stop users in their tracks. We focus on commercial video optimized for social platforms, TV, and high-performance digital advertisement spaces.',
-    bullets: ['Brand Commercials', 'Social Media Video Ads', 'Product Showcases', 'Content Frameworks']
-  },
-  {
-    id: 'lifestyle',
-    num: '03',
-    title: 'Lifestyle Photo & Video',
-    subtitle: 'Authentic Brand Narratives',
-    description: 'Capturing dynamic, human-centric visual content. Our lifestyle capture specializes in fashion editorials, high-profile interviews, and lifestyle video production representing authentic stories.',
-    bullets: ['Fashion Editorials', 'Brand Ambassadors', 'Corporate Portraits', 'Lifestyle Clips']
-  },
-  {
-    id: 'drone',
-    num: '04',
-    title: 'Aerial & Drone Cinematography',
-    subtitle: 'Unrestricted Perspectives',
-    description: 'Licensed, high-resolution aerial cinematography. We use heavy-lift custom drones capable of carrying Hollywood-grade cameras to capture stunning aerial landscapes and dynamic action trackers.',
-    bullets: ['Certified UAV Pilots', '8K Raw Aerial Video', 'Precision FPV Tracking', 'Topographical Surveys']
-  },
-  {
-    id: 'strategy',
-    num: '05',
-    title: 'Digital & Social Strategy',
-    subtitle: 'End-to-End Content Amplification',
-    description: 'A great video only works if it reaches the right eyes. We configure platform-specific campaigns, content layouts, hooks, and data trackers to ensure your cinematic content translates to measurable sales.',
-    bullets: ['Distribution Architecture', 'Audience Funnel Setup', 'Hook Optimization', 'Performance Analytics']
-  }
-];
 
 export default function ServicesPage() {
 
@@ -112,7 +70,7 @@ export default function ServicesPage() {
 
         {/* Services Expander Accordion list */}
         <div className="flex flex-col border-t border-white/15">
-          {services.map((service) => {
+          {AGENCY_CONFIG.services.map((service) => {
             const isOpen = expandedService === service.id;
 
             return (

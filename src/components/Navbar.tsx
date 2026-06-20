@@ -7,6 +7,7 @@ import { Menu, X, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useLenis } from '@/context/SmoothScrollContext';
+import { AGENCY_CONFIG } from '@/config/agency';
 
 const navLinks = [
   { label: 'Home', href: '/' },
@@ -211,9 +212,17 @@ export default function Navbar() {
               </Link>
 
               <div className="flex justify-between items-center text-white/40 text-[10px] tracking-widest font-secondary uppercase">
-                <span>instagram</span>
-                <span>tiktok</span>
-                <span>linkedin</span>
+                {AGENCY_CONFIG.socials.map((social) => (
+                  <a
+                    key={social.platform}
+                    href={social.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-white transition-colors"
+                  >
+                    {social.platform}
+                  </a>
+                ))}
               </div>
             </div>
           </motion.div>
