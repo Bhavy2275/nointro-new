@@ -46,7 +46,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${montserrat.variable} ${inter.variable} ${fraunces.variable}`} suppressHydrationWarning>
-      <body className="font-secondary bg-black text-white min-h-screen flex flex-col antialiased">
+      <body className="font-secondary bg-black text-white min-h-screen flex flex-col antialiased" suppressHydrationWarning>
         {/* Cinematic Preloader count-up overlay */}
         <Preloader />
         

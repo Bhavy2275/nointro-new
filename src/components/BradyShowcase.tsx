@@ -78,6 +78,7 @@ function Card({
 
     let active = true;
     const video = document.createElement('video');
+    video.crossOrigin = 'anonymous';
     video.src = project.video;
     video.muted = true;
     video.loop = true;
