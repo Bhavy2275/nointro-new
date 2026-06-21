@@ -13,163 +13,137 @@ interface ProjectOverlayProps {
 
 export default function ProjectOverlay({ project, onClose }: ProjectOverlayProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const heroRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const tl = useRef<gsap.core.Timeline | null>(null);
   const lenis = useLenis();
 
-  // ── Pause scroll behavior of background on overlay mount, resume on unmount ──
+  // Stop smooth scroll while open
   useEffect(() => {
     lenis?.stop();
-    return () => {
-      lenis?.start();
-    };
+    return () => { lenis?.start(); };
   }, [lenis]);
 
-  // ── GSAP Entrance Animation Timeline ──
-  useGSAP(
-    () => {
-      // Build animation sequence. On reverse complete, trigger the onClose unmount callback.
-      tl.current = gsap
-        .timeline({
-          paused: true,
-          onReverseComplete: onClose,
-        })
-        // 1. Fade overlay backdrop and apply blur
-        .fromTo(overlayRef.current, 
-          { opacity: 0 }, 
-          { opacity: 1, duration: 0.35, ease: 'power2.out' }
-        )
-        // 2. Slide content panel up from y: 40 with duration 0.5 and power3.out ease
-        .fromTo(panelRef.current, 
-          { y: 40, opacity: 0 }, 
-          { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, 
-          '-=0.15'
-        )
-        // 3. Stagger entrance of typography blocks and key values
-        .fromTo(
-          textRef.current ? Array.from(textRef.current.children) : [],
-          { y: 18, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.45, ease: 'power2.out', stagger: 0.07 },
-          '-=0.35'
-        );
+  // Auto-play video when overlay opens
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid || !project.video) return;
+    vid.play().catch(() => {});
+    return () => { vid.pause(); vid.currentTime = 0; };
+  }, [project.video]);
 
-      // Play sequence immediately on mount
-      tl.current.play();
-    },
-    { scope: overlayRef }
-  );
+  // Zoom-in entrance animation
+  useGSAP(() => {
+    tl.current = gsap.timeline({ paused: true, onReverseComplete: onClose })
+      .fromTo(backdropRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3, ease: 'power2.out' }
+      )
+      .fromTo(cardRef.current,
+        { scale: 0.84, opacity: 0, y: 28 },
+        { scale: 1, opacity: 1, y: 0, duration: 0.5, ease: 'back.out(1.5)' },
+        '-=0.15'
+      );
+    tl.current.play();
+  }, { scope: overlayRef });
 
-  // Reverses the GSAP timeline and unmounts upon completion
   const handleClose = useCallback(() => {
-    if (tl.current) {
-      tl.current.reverse();
-    } else {
-      onClose();
-    }
+    tl.current ? tl.current.reverse() : onClose();
   }, [onClose]);
 
-  // ── Close overlay on ESC key ──
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleClose();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [handleClose]);
 
   return (
     <div
       ref={overlayRef}
-      // Fixed full viewport positioned overlay at z-index 50
-      className="fixed inset-0 z-50 bg-zinc-950/95 backdrop-blur-md flex items-center justify-center p-6 md:p-16 select-none"
-      onClick={(e) => {
-        // Closes modal only if the backdrop element itself was clicked
-        if (e.target === e.currentTarget) handleClose();
-      }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-label={project.title}
     >
-      {/* Close Button */}
-      <button
-        onClick={handleClose}
-        className="absolute top-6 right-6 md:top-10 md:right-12 px-6 py-2.5 font-primary font-bold text-[10px] tracking-[0.22em] uppercase text-white border border-white/20 bg-white/5 backdrop-blur-sm transition-all duration-250 hover:bg-white hover:text-black hover:border-white z-50 cursor-pointer"
-        aria-label="Close project modal"
-      >
-        Close
-      </button>
-
-      {/* Main panel container */}
+      {/* Backdrop */}
       <div
-        ref={panelRef}
-        className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 max-w-6xl w-full mx-auto items-center"
+        ref={backdropRef}
+        className="absolute inset-0 bg-black/85 backdrop-blur-2xl"
+        onClick={handleClose}
+      />
+
+      {/* Card — wider to accommodate video */}
+      <div
+        ref={cardRef}
+        className="relative z-10 w-full max-w-2xl rounded-2xl overflow-hidden border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.95)]"
+        style={{ background: 'rgba(10,10,10,0.98)' }}
       >
-        {/* Left: Gradient Hero Area with Blended Project Image or Video */}
-        <div
-          ref={heroRef}
-          style={{ 
-            '--hero-gradient': project.gradient,
-            '--hero-image': `url('${project.image}')`
-          } as React.CSSProperties}
-          className={`relative w-full ${project.video ? 'aspect-video' : 'aspect-[3/4]'} max-h-[50vh] md:max-h-[65vh] bg-[var(--hero-gradient)] rounded-2xl border border-white/10 overflow-hidden shadow-2xl`}
-        >
-          {project.video ? (
+        {/* ── Video player ───────────────────────────────────────── */}
+        {project.video ? (
+          <div className="relative w-full bg-black" style={{ aspectRatio: '16/9' }}>
             <video
+              ref={videoRef}
               src={project.video}
+              className="w-full h-full object-contain"
               controls
-              autoPlay
-              loop
               playsInline
-              className="absolute inset-0 w-full h-full object-contain bg-black"
+              loop
+              muted={false}
             />
-          ) : (
-            <>
-              {/* Background image overlay with mix-blend-mode for cinematic depth */}
-              <div 
-                className="absolute inset-0 bg-cover bg-center opacity-80 mix-blend-overlay transition-transform duration-700 hover:scale-105"
-                style={{ backgroundImage: 'var(--hero-image)' }}
-                aria-hidden="true"
-              />
-              {/* Soft vignette gradient */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" aria-hidden="true" />
-            </>
-          )}
-        </div>
+          </div>
+        ) : (
+          /* No video — show a dark placeholder with title */
+          <div className="w-full flex items-center justify-center bg-black/60" style={{ aspectRatio: '16/9' }}>
+            <p className="font-primary font-black text-3xl uppercase text-white/15 tracking-widest">
+              {project.title}
+            </p>
+          </div>
+        )}
 
-        {/* Right: Editorial Information Column */}
-        <div ref={textRef} className="flex flex-col text-left">
-          {/* Tag */}
-          <span className="font-primary font-bold text-[10px] tracking-[0.25em] text-white/50 uppercase mb-3">
-            {project.tag}
-          </span>
+        {/* ── Info section ───────────────────────────────────────── */}
+        <div className="px-6 pt-5 pb-6 flex flex-col gap-4">
 
-          {/* Title */}
-          <h2 className="font-primary font-black text-4xl md:text-6xl tracking-tight uppercase text-white mb-6 pr-[0.15em] leading-none">
-            {project.title}
-          </h2>
+          {/* Tag + title row */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-1.5">
+              <span className="font-primary font-bold text-[9px] tracking-[0.3em] uppercase text-white/40 border border-white/10 px-2.5 py-0.5 rounded-full w-fit">
+                {project.tag}
+              </span>
+              <h2 className="font-primary font-black text-xl tracking-tight uppercase text-white leading-tight">
+                {project.title}
+              </h2>
+            </div>
+
+            {/* Close button */}
+            <button
+              onClick={handleClose}
+              aria-label="Close"
+              className="shrink-0 mt-0.5 w-8 h-8 flex items-center justify-center rounded-full bg-white/6 border border-white/10 text-white/50 hover:text-white hover:bg-white/12 transition-all duration-200"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="w-full h-px bg-white/6" />
 
           {/* Description */}
-          <p className="font-secondary text-white/65 text-sm md:text-base tracking-wide leading-relaxed mb-10 max-w-lg">
+          <p className="font-secondary text-white/55 text-sm leading-relaxed tracking-wide">
             {project.description}
           </p>
 
-          {/* 2-Column Editorial Metadata Grid */}
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-4 pt-6 border-t border-white/10 max-w-lg">
-            {Object.entries(project.meta).map(([key, value]) => (
+          {/* Metadata row */}
+          <div className="flex gap-6 flex-wrap pt-1">
+            {Object.entries(project.meta).map(([key, val]) => (
               <div key={key} className="flex flex-col gap-0.5">
-                <dt className="font-secondary text-[10px] tracking-widest text-white/40 uppercase">
-                  {key}
-                </dt>
-                <dd className="font-primary font-bold text-xs uppercase text-white tracking-wide">
-                  {value}
-                </dd>
+                <span className="font-secondary text-[9px] tracking-widest text-white/25 uppercase">{key}</span>
+                <span className="font-primary font-bold text-[11px] uppercase text-white/75 tracking-wide">{val}</span>
               </div>
             ))}
-          </dl>
+          </div>
         </div>
       </div>
     </div>

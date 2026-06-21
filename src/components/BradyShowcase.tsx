@@ -41,39 +41,54 @@ function Card({
   const [hovered, setHovered] = useState(false);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const videoTextureRef = useRef<THREE.VideoTexture | null>(null);
+  // Native video aspect ratio (width / height), defaults to 16/9 until video metadata loads
+  const [videoAspect, setVideoAspect] = useState<number>(16 / 9);
 
-  // Resilient texture loader with proper cleanup
+  // Canvas text placeholder — dark card with project tag + title, no external image requests
   useEffect(() => {
-    let active = true;
-    let loadedTex: THREE.Texture | null = null;
+    const W = 960, H = 540;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d')!;
 
-    const loader = new THREE.TextureLoader();
-    loader.load(
-      project.image,
-      (tex) => {
-        if (!active) {
-          tex.dispose();
-          return;
-        }
-        tex.colorSpace = THREE.SRGBColorSpace;
-        loadedTex = tex;
-        setTexture(tex);
-      },
-      undefined,
-      (err) => {
-        console.warn(`Failed to load texture for "${project.title}":`, err);
-      }
-    );
+    // Dark gradient background
+    const grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, '#111111');
+    grad.addColorStop(1, '#0a0a0a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
 
-    return () => {
-      active = false;
-      if (loadedTex) {
-        loadedTex.dispose();
-      }
-    };
-  }, [project.image, project.title]);
+    // Subtle border
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, W - 2, H - 2);
 
-  // Resilient video loader with proper cleanup
+    // Tag line
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.font = 'bold 22px system-ui, sans-serif';
+    ctx.letterSpacing = '6px';
+    ctx.textAlign = 'center';
+    ctx.fillText(project.tag.toUpperCase(), W / 2, H / 2 - 28);
+
+    // Title
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = 'bold 48px system-ui, sans-serif';
+    ctx.letterSpacing = '1px';
+    ctx.fillText(project.title.toUpperCase(), W / 2, H / 2 + 28);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    setTexture(tex);
+
+    return () => { tex.dispose(); };
+  }, [project.tag, project.title]);
+
+
+  // Lazy video loader — preload=none until the card is close to center.
+  // This prevents all 18 video files being read from disk simultaneously on mount.
+  const videoLoadStarted = useRef(false);
+
   useEffect(() => {
     if (!project.video) return;
 
@@ -85,39 +100,43 @@ function Card({
     video.muted = true;
     video.loop = true;
     video.playsInline = true;
-    video.preload = 'metadata'; // Use 'metadata' to avoid loading the full video initially
-    video.width = 1280;
-    video.height = 720;
+    video.preload = 'none'; // ← no disk I/O until card is near center
     video.setAttribute('decoding', 'async');
     videoRef.current = video;
+    videoLoadStarted.current = false;
+
+    // Detect native aspect ratio once metadata is available
+    const onMeta = () => {
+      if (!active) return;
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        setVideoAspect(video.videoWidth / video.videoHeight);
+      }
+    };
+    video.addEventListener('loadedmetadata', onMeta);
 
     const tex = new THREE.VideoTexture(video);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.minFilter = THREE.LinearFilter;
     tex.magFilter = THREE.LinearFilter;
-    
+
     if (active) {
       videoTextureRef.current = tex;
     }
 
     return () => {
       active = false;
-      if (video) {
-        try {
-          video.pause();
-          video.src = '';
-          video.load();
-        } catch (err) {
-          console.warn("Video cleanup failed:", err);
-        }
+      video.removeEventListener('loadedmetadata', onMeta);
+      try {
+        video.pause();
+        video.src = '';
+        video.load();
+      } catch (err) {
+        console.warn('Video cleanup failed:', err);
       }
-      if (tex) {
-        try {
-          tex.dispose();
-        } catch {}
-      }
+      if (tex) { try { tex.dispose(); } catch {} }
       videoTextureRef.current = null;
       videoRef.current = null;
+      videoLoadStarted.current = false;
     };
   }, [project.video]);
 
@@ -127,34 +146,35 @@ function Card({
     const t = state.clock.getElapsedTime();
     const scrollVal = scrollRef.current;
 
-    // Circular wrapping rel position in range [-total/2, total/2)
-    let rel = index - scrollVal;
-    rel = ((rel + total / 2) % total);
-    if (rel < 0) rel += total;
-    rel -= total / 2;
+    // Correct circular wrapping: always produce a value in [-total/2, total/2)
+    // Using a two-step modulo that guarantees non-negative before centering
+    const raw = index - scrollVal;
+    const wrapped = ((raw % total) + total) % total; // always in [0, total)
+    const rel = wrapped < total / 2 ? wrapped : wrapped - total; // re-center to [-total/2, total/2)
 
     const dist = Math.abs(rel);
-    const isCentered = dist < 0.5;
+    const shouldPlay = dist < 1.5;  // play center card + immediate left & right neighbors (3 videos concurrently)
+    const shouldLoad = dist < 3;    // start buffering when 3 positions away
 
-    // Only play video if card is centered
+    // Lazy-load: trigger disk read only when card is close to center view
+    if (videoRef.current && shouldLoad && !videoLoadStarted.current) {
+      videoLoadStarted.current = true;
+      videoRef.current.preload = 'auto';
+      videoRef.current.load();
+    }
+
+    // Play active center + adjacent videos, pause others
     if (videoRef.current) {
-      if (isCentered) {
-        if (videoRef.current.paused) {
-          if (videoRef.current.preload !== 'auto') {
-            videoRef.current.preload = 'auto';
-          }
-          videoRef.current.play().catch(() => {});
-        }
+      if (shouldPlay) {
+        if (videoRef.current.paused) videoRef.current.play().catch(() => {});
       } else {
-        if (!videoRef.current.paused) {
-          videoRef.current.pause();
-        }
+        if (!videoRef.current.paused) videoRef.current.pause();
       }
     }
 
-    // Dynamic texture swapping: show video texture only when centered, otherwise static image
+    // Texture swap: video texture on playing cards, canvas text placeholder otherwise
     if (materialRef.current) {
-      const activeTexture = (isCentered && videoTextureRef.current) ? videoTextureRef.current : texture;
+      const activeTexture = (shouldPlay && videoTextureRef.current) ? videoTextureRef.current : texture;
       if (materialRef.current.map !== activeTexture) {
         materialRef.current.map = activeTexture;
         materialRef.current.needsUpdate = true;
@@ -172,23 +192,30 @@ function Card({
     const targetY = offset.y + rel * driftY + Math.sin(t * 0.8 + index * 1.3) * 0.04;
     const targetZ = offset.z - dist * 0.8;
 
-    meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, targetX, 0.08);
-    meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, targetY, 0.08);
-    meshRef.current.position.z = THREE.MathUtils.lerp(meshRef.current.position.z, targetZ, 0.08);
+    const lerpFactor = 0.12; // increased from 0.08 for snappier, less laggy motion
+    meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, targetX, lerpFactor);
+    meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, targetY, lerpFactor);
+    meshRef.current.position.z = THREE.MathUtils.lerp(meshRef.current.position.z, targetZ, lerpFactor);
 
     const targetRX = offset.rx;
     const targetRY = offset.ry + rel * 0.05;
     const targetRZ = offset.rz;
 
-    meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, targetRX, 0.08);
-    meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, targetRY, 0.08);
-    meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, targetRZ, 0.08);
+    meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, targetRX, lerpFactor);
+    meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, targetRY, lerpFactor);
+    meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, targetRZ, lerpFactor);
 
     // active focus scaling
     const activeScale = hovered ? 1.08 : 1.0;
     const targetScale = Math.max(0.72, 1 - dist * 0.12) * activeScale;
-    meshRef.current.scale.setScalar(THREE.MathUtils.lerp(meshRef.current.scale.x, targetScale, 0.08));
+    meshRef.current.scale.setScalar(THREE.MathUtils.lerp(meshRef.current.scale.x, targetScale, lerpFactor));
   });
+
+  // Normalize by the LONG side so portrait and landscape cards have similar visual weight:
+  //   landscape (aspect ≥ 1): long side = width  → cardW = 4.8,  cardH = 4.8 / aspect
+  //   portrait  (aspect < 1): long side = height → cardH = 4.0,  cardW = 4.0 * aspect
+  const cardW = videoAspect >= 1 ? 4.8 : 4.0 * videoAspect;
+  const cardH = videoAspect >= 1 ? 4.8 / videoAspect : 4.0;
 
   return (
     <mesh
@@ -208,7 +235,7 @@ function Card({
         onHoverChange(false);
       }}
     >
-      <planeGeometry args={[4.8, 2.7]} />
+      <planeGeometry args={[cardW, cardH]} />
       <meshBasicMaterial
         ref={materialRef}
         map={texture}
@@ -328,9 +355,9 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
         targetScroll.current += 0.0006;
       }
 
-      // Smooth lerp
+      // Smooth lerp — increased factor for snappier response
       const diff = targetScroll.current - scroll.current;
-      scroll.current += diff * 0.08;
+      scroll.current += diff * 0.12;
 
       // Wrap scroll values seamlessly
       while (targetScroll.current >= n) {
@@ -358,10 +385,10 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
           const item = items[i] as HTMLElement;
           if (!item) continue;
 
-          let rel = i - scroll.current;
-          rel = ((rel + totalItems / 2) % totalItems);
-          if (rel < 0) rel += totalItems;
-          rel -= totalItems / 2;
+          // Correct circular wrapping (same fix as in useFrame)
+          const rawRel = i - scroll.current;
+          const wrappedRel = ((rawRel % totalItems) + totalItems) % totalItems;
+          const rel = wrappedRel < totalItems / 2 ? wrappedRel : wrappedRel - totalItems;
 
           const dist = Math.abs(rel);
           const y = rel * gap;
@@ -382,12 +409,11 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
         }
       }
 
-      // Update active index state on change
-      const activeIdx = Math.round(scroll.current) % n;
-      const normalizedIdx = activeIdx < 0 ? activeIdx + n : activeIdx;
-      if (normalizedIdx !== lastActiveIndex.current) {
-        lastActiveIndex.current = normalizedIdx;
-        setActiveIndex(normalizedIdx);
+      // Update active index — use double-modulo for correct fractional-scroll handling
+      const activeIdx = ((Math.round(scroll.current) % n) + n) % n;
+      if (activeIdx !== lastActiveIndex.current) {
+        lastActiveIndex.current = activeIdx;
+        setActiveIndex(activeIdx);
       }
 
       frameId = requestAnimationFrame(tick);
@@ -399,31 +425,36 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
 
   // Pointer drag gestures to manually spin the carousel
   const handlePointerDown = (e: React.PointerEvent) => {
-    isDraggingRef.current = true;
     pointerDownRef.current = {
       x: e.clientX,
       y: e.clientY,
       scrollVal: targetScroll.current,
     };
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // Don't capture pointer here — let Three.js mesh clicks through
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!pointerDownRef.current) return;
     const deltaX = e.clientX - pointerDownRef.current.x;
-    
-    // Convert drag pixel displacement to scroll units
-    const sensitivity = window.innerWidth < 768 ? 1.5 : 1.0;
-    const scrollDelta = -(deltaX / window.innerWidth) * sensitivity;
-    targetScroll.current = pointerDownRef.current.scrollVal + scrollDelta;
+    const deltaY = e.clientY - pointerDownRef.current.y;
+    const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    // Only start drag if pointer moved more than 6px (avoids eating tap clicks)
+    if (dist > 6) {
+      isDraggingRef.current = true;
+      // Convert drag pixel displacement to scroll units
+      const sensitivity = window.innerWidth < 768 ? 1.5 : 1.0;
+      const scrollDelta = -(deltaX / window.innerWidth) * sensitivity;
+      targetScroll.current = pointerDownRef.current.scrollVal + scrollDelta;
+    }
   };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (pointerDownRef.current) {
-      pointerDownRef.current = null;
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-    isDraggingRef.current = false;
+  const handlePointerUp = (_e: React.PointerEvent) => {
+    pointerDownRef.current = null;
+    // Small delay so isDragging stays true through the click event, then resets
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 50);
   };
 
   if (!mounted) {
@@ -457,7 +488,6 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
                       opacity 0.5s cubic-bezier(0.22, 0.61, 0.36, 1),
                       font-size 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
           white-space: nowrap;
-          cursor: none;
         }
         .list-item.active {
           opacity: 1;

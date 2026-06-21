@@ -111,19 +111,12 @@ export default function HomePage() {
         {/* Background Video */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <div className="hero-bg-media w-full h-[130%] absolute -top-[15%] left-0">
-            {/* Low-res poster image fallback */}
-            <div 
-              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-              style={{ backgroundImage: `url('https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&q=80&w=1200')` }}
-            />
             {/* Background Loop Video - Self-hosted local video asset */}
             <video
               ref={(el) => {
                 if (el) {
                   el.muted = true;
-                  el.play().catch((err) => {
-                    console.log("Autoplay was prevented:", err);
-                  });
+                  el.play().catch(() => {});
                 }
               }}
               className="w-full h-full object-cover relative z-10"

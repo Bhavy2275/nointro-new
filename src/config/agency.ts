@@ -50,7 +50,7 @@ export const AGENCY_CONFIG = {
   ],
 
   projectsVideos: {
-    project5: process.env.NEXT_PUBLIC_PROJECT_5_VIDEO || 'https://22icqgouubbjklkh.public.blob.vercel-storage.com/Blangywood%20Aftermovie.mp4',
+    project5: process.env.NEXT_PUBLIC_PROJECT_5_VIDEO || '/videos/hero.mp4',
   },
 
   homepageCategories: ['all', 'cinematic', 'commercial', 'lifestyle', 'aerial'],

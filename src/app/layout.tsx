@@ -1,10 +1,8 @@
 import type { Metadata } from 'next';
-import { Montserrat, Inter, Fraunces } from 'next/font/google';
+import { Montserrat, Inter } from 'next/font/google';
 import './globals.css';
 import SmoothScroll from '@/components/SmoothScroll';
-import CustomCursor from '@/components/CustomCursor';
 import PageTransition from '@/components/PageTransition';
-import Footer from '@/components/Footer';
 import Preloader from '@/components/Preloader';
 
 const montserrat = Montserrat({
@@ -12,6 +10,7 @@ const montserrat = Montserrat({
   weight: ['300', '400', '500', '600', '700', '800', '900'],
   variable: '--font-montserrat',
   display: 'swap',
+  preload: false,
 });
 
 const inter = Inter({
@@ -19,13 +18,7 @@ const inter = Inter({
   weight: ['300', '400', '500', '600'],
   variable: '--font-inter',
   display: 'swap',
-});
-
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  weight: ['100', '200', '300', '400', '900'],
-  variable: '--font-fraunces',
-  display: 'swap',
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -44,14 +37,36 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${montserrat.variable} ${inter.variable} ${fraunces.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${montserrat.variable} ${inter.variable}`} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                const originalWarn = console.warn;
+                console.warn = function(...args) {
+                  if (args[0] && typeof args[0] === 'string') {
+                    const msg = args[0];
+                    if (
+                      msg.includes('THREE.Clock') || 
+                      msg.includes('preloaded') || 
+                      msg.includes('DevTools') ||
+                      msg.includes('React DevTools')
+                    ) {
+                      return;
+                    }
+                  }
+                  originalWarn.apply(console, args);
+                };
+              })();
+            `
+          }}
+        />
+      </head>
       <body className="font-secondary bg-black text-white min-h-screen flex flex-col antialiased" suppressHydrationWarning>
         {/* Cinematic Preloader count-up overlay */}
         <Preloader />
-        
-        {/* Custom dot + follower cursor */}
-        <CustomCursor />
-        
+
         {/* Smooth scroll container */}
         <SmoothScroll>
           {/* Wipe Transition wrapper */}
@@ -60,9 +75,6 @@ export default function RootLayout({
               {children}
             </main>
           </PageTransition>
-          
-          {/* Footer Navigation */}
-          <Footer />
         </SmoothScroll>
       </body>
     </html>
