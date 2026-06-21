@@ -13,8 +13,10 @@ export interface Project {
   /** Full CSS gradient string injected as `background` on the card */
   gradient: string;
   image: string;
-  /** Optional local video file path or CDN URL */
+  /** Optional local video file path or CDN URL for the full popup video */
   video?: string;
+  /** Optional low-resolution, silent loop video path for the 3D card preview */
+  previewVideo?: string;
   /** Optional YouTube video URL for the Watch on YouTube CTA */
   youtubeUrl?: string;
   /** Arbitrary key-value editorial metadata (client, year, role, location …) */

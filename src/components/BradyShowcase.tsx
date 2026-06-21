@@ -90,13 +90,14 @@ function Card({
   const videoLoadStarted = useRef(false);
 
   useEffect(() => {
-    if (!project.video) return;
+    const videoSrc = project.previewVideo || project.video;
+    if (!videoSrc) return;
 
     let active = true;
     const video = document.createElement('video');
     video.crossOrigin = 'anonymous';
-    const separator = project.video.includes('?') ? '&' : '?';
-    video.src = `${project.video}${separator}cv=1`;
+    const separator = videoSrc.includes('?') ? '&' : '?';
+    video.src = `${videoSrc}${separator}cv=1`;
     video.muted = true;
     video.loop = true;
     video.playsInline = true;
@@ -138,7 +139,7 @@ function Card({
       videoRef.current = null;
       videoLoadStarted.current = false;
     };
-  }, [project.video]);
+  }, [project.previewVideo, project.video]);
 
   useFrame((state) => {
     if (!meshRef.current) return;
