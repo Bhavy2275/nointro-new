@@ -172,9 +172,10 @@ function Card({
       }
     }
 
-    // Texture swap: video texture on playing cards, canvas text placeholder otherwise
+    // Texture swap: video texture on playing cards ONLY when data is loaded, canvas text placeholder otherwise
     if (materialRef.current) {
-      const activeTexture = (shouldPlay && videoTextureRef.current) ? videoTextureRef.current : texture;
+      const isVideoReady = videoRef.current && videoRef.current.readyState >= 2;
+      const activeTexture = (shouldPlay && isVideoReady && videoTextureRef.current) ? videoTextureRef.current : texture;
       if (materialRef.current.map !== activeTexture) {
         materialRef.current.map = activeTexture;
         materialRef.current.needsUpdate = true;
