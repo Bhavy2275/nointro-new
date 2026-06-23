@@ -87,10 +87,10 @@ function Card({
 
   // Lazy video loader — preload=none until the card is close to center.
   // This prevents all 18 video files being read from disk simultaneously on mount.
+  const videoSrc = project.previewVideo || project.video;
   const videoLoadStarted = useRef(false);
 
   useEffect(() => {
-    const videoSrc = project.previewVideo || project.video;
     if (!videoSrc) return;
 
     let active = true;
@@ -139,7 +139,7 @@ function Card({
       videoRef.current = null;
       videoLoadStarted.current = false;
     };
-  }, [project.previewVideo, project.video]);
+  }, [videoSrc]);
 
   useFrame((state) => {
     if (!meshRef.current) return;
@@ -481,8 +481,8 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
           position: absolute;
           left: 50%;
           top: 50%;
-          font-family: var(--font-fraunces), serif;
-          font-weight: 100;
+          font-family: var(--font-primary), sans-serif;
+          font-weight: 300;
           font-size: clamp(1.6rem, 5.5vw, 4.2rem);
           text-transform: uppercase;
           color: white;
@@ -557,9 +557,9 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
         ))}
       </div>
 
-      {/* Bottom overlay displaying project metadata for the currently active/centered project */}
+      {/* Top overlay displaying project metadata for the currently active/centered project */}
       {projects.length > 0 && (
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 z-30 pointer-events-none text-center">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 z-30 pointer-events-none text-center">
           <span className="font-primary font-bold text-[9px] tracking-[0.3em] uppercase text-white/50 animate-fade">
             {projects[activeIndex]?.tag}
           </span>
