@@ -8,11 +8,6 @@ import { projects as marqueeProjects, Project } from '@/components/projects';
 import dynamic from 'next/dynamic';
 import { AGENCY_CONFIG } from '@/config/agency';
 
-const Agentation = dynamic(
-  () => import('agentation').then((mod) => mod.Agentation),
-  { ssr: false }
-);
-
 const BradyShowcase = dynamic(
   () => import('@/components/BradyShowcase'),
   {
@@ -208,8 +203,6 @@ export default function HomePage() {
         />
       )}
 
-      {/* Agentation visual annotation feedback toolbar */}
-      <Agentation />
     </div>
   );
 }

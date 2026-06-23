@@ -154,7 +154,7 @@ function Card({
     const rel = wrapped < total / 2 ? wrapped : wrapped - total; // re-center to [-total/2, total/2)
 
     const dist = Math.abs(rel);
-    const shouldPlay = dist < 1.5;  // play center card + immediate left & right neighbors (3 videos concurrently)
+    const shouldPlay = dist < 1.0;  // Fix 3: only play center card to cap concurrent GPU uploads to 1 video
     const shouldLoad = dist < 3;    // start buffering when 3 positions away
 
     // Lazy-load: trigger disk read only when card is close to center view
@@ -164,22 +164,12 @@ function Card({
       videoRef.current.load();
     }
 
-    // Play active center + adjacent videos, pause others
+    // Play active center video, pause others
     if (videoRef.current) {
       if (shouldPlay) {
         if (videoRef.current.paused) videoRef.current.play().catch(() => {});
       } else {
         if (!videoRef.current.paused) videoRef.current.pause();
-      }
-    }
-
-    // Texture swap: video texture on playing cards ONLY when data is loaded, canvas text placeholder otherwise
-    if (materialRef.current) {
-      const isVideoReady = videoRef.current && videoRef.current.readyState >= 2;
-      const activeTexture = (shouldPlay && isVideoReady && videoTextureRef.current) ? videoTextureRef.current : texture;
-      if (materialRef.current.map !== activeTexture) {
-        materialRef.current.map = activeTexture;
-        materialRef.current.needsUpdate = true;
       }
     }
 
@@ -194,23 +184,43 @@ function Card({
     const targetY = offset.y + rel * driftY + Math.sin(t * 0.8 + index * 1.3) * 0.04;
     const targetZ = offset.z - dist * 0.8;
 
+    const targetRX = offset.rx;
+    const targetRY = offset.ry + rel * 0.05;
+    const targetRZ = offset.rz;
+
+    // active focus scaling
+    const activeScale = hovered ? 1.08 : 1.0;
+    const targetScale = Math.max(0.72, 1 - dist * 0.12) * activeScale;
+
+    // Fix 1: Skip lerp block entirely for distant cards and do a cheap instant set
+    if (dist > 4) {
+      meshRef.current.position.set(targetX, targetY, targetZ);
+      meshRef.current.rotation.set(targetRX, targetRY, targetRZ);
+      meshRef.current.scale.setScalar(targetScale);
+      // Fix 2: avoid touching materialRef.current.map at all for cards where dist > 4
+      return;
+    }
+
     const lerpFactor = 0.12; // increased from 0.08 for snappier, less laggy motion
     meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, targetX, lerpFactor);
     meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, targetY, lerpFactor);
     meshRef.current.position.z = THREE.MathUtils.lerp(meshRef.current.position.z, targetZ, lerpFactor);
 
-    const targetRX = offset.rx;
-    const targetRY = offset.ry + rel * 0.05;
-    const targetRZ = offset.rz;
-
     meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, targetRX, lerpFactor);
     meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, targetRY, lerpFactor);
     meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, targetRZ, lerpFactor);
 
-    // active focus scaling
-    const activeScale = hovered ? 1.08 : 1.0;
-    const targetScale = Math.max(0.72, 1 - dist * 0.12) * activeScale;
     meshRef.current.scale.setScalar(THREE.MathUtils.lerp(meshRef.current.scale.x, targetScale, lerpFactor));
+
+    // Fix 2: Material texture swap logic (only runs when dist <= 4)
+    if (materialRef.current) {
+      const isVideoReady = videoRef.current && videoRef.current.readyState >= 2;
+      const activeTexture = (shouldPlay && isVideoReady && videoTextureRef.current) ? videoTextureRef.current : texture;
+      if (materialRef.current.map !== activeTexture) {
+        materialRef.current.map = activeTexture;
+        materialRef.current.needsUpdate = true;
+      }
+    }
   });
 
   // Normalize by the LONG side so portrait and landscape cards have similar visual weight:
@@ -518,7 +528,7 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
         data-cursor={isHoveringGrid ? 'view' : undefined}
       >
         <ErrorBoundary>
-          <Canvas camera={{ position: [0, 0, 5], fov: 50 }} gl={{ alpha: true }}>
+          <Canvas camera={{ position: [0, 0, 5], fov: 50 }} gl={{ alpha: true }} dpr={[1, 1.5]}>
             {projects.length > 0 && (
               <GridScene
                 projects={projects}
