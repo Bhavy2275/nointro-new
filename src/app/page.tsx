@@ -28,29 +28,10 @@ const BradyShowcase = dynamic(
 );
 
 export default function HomePage() {
-  const [activeCategory, setActiveCategory] = useState<'all' | 'cinematic' | 'commercial' | 'lifestyle' | 'aerial'>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   
   const heroRef = useRef<HTMLDivElement>(null);
   const taglineRef = useRef<HTMLDivElement>(null);
-
-  // Form State
-  const [formData, setFormData] = useState({ name: '', email: '', message: '' });
-  const [formState, setFormState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
-  const [formMessage, setFormMessage] = useState('');
-
-  // Filter marquee projects based on selected tab
-  const filteredMarqueeProjects = activeCategory === 'all'
-    ? marqueeProjects
-    : marqueeProjects.filter(project => {
-        const tag = project.tag.toLowerCase();
-        if (activeCategory === 'cinematic') return tag.includes('cinematic') || tag.includes('short') || tag.includes('art');
-        if (activeCategory === 'commercial') return tag.includes('commercial') || tag.includes('brand') || tag.includes('tech');
-        if (activeCategory === 'lifestyle') return tag.includes('lifestyle') || tag.includes('fashion') || tag.includes('scenes');
-        if (activeCategory === 'aerial') return tag.includes('drone') || tag.includes('aerial');
-        return false;
-      });
 
   useEffect(() => {
     // Register ScrollTrigger plugin on client mount
@@ -100,33 +81,6 @@ export default function HomePage() {
       ScrollTrigger.getAll().forEach(t => t.kill());
     };
   }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormState('submitting');
-    setFormMessage('');
-
-    try {
-      const res = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        setFormState('success');
-        setFormMessage('Your inquiry has been sent successfully. We will contact you soon.');
-        setFormData({ name: '', email: '', message: '' });
-      } else {
-        throw new Error(data.error || 'Failed to submit inquiry.');
-      }
-    } catch (err: unknown) {
-      setFormState('error');
-      setFormMessage(err instanceof Error ? err.message : 'An error occurred while sending your inquiry.');
-    }
-  };
 
   return (
     <div className="w-full bg-black text-white flex flex-col">
@@ -237,195 +191,13 @@ export default function HomePage() {
       </section>
 
       {/* 2. Portfolio Marquee Section — full-viewport, edge-to-edge */}
-      <section id="work" className="w-full bg-[#0a0a0a] relative">
+      <section id="work" className="w-full bg-[#0a0a0a]">
         {/* Edge-to-edge Brady Perron 3D stack / list showcase */}
         <BradyShowcase
-          projects={filteredMarqueeProjects}
+          projects={marqueeProjects}
           onCardClick={(project) => setSelectedProject(project)}
-          viewMode={viewMode}
+          viewMode="grid"
         />
-
-        {/* Floating Controls Dock */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 flex flex-col md:flex-row items-center gap-4 md:gap-6 bg-black/60 backdrop-blur-xl border border-white/10 px-6 py-3 rounded-2xl md:rounded-full shadow-2xl hover:border-white/20 transition-all duration-300">
-          {/* Category Tabs */}
-          <div className="flex flex-wrap justify-center gap-1.5 md:gap-2">
-            {(['all', 'cinematic', 'commercial', 'lifestyle', 'aerial'] as const).map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`font-primary font-bold text-[9px] tracking-[0.15em] uppercase px-3 py-1.5 rounded-full transition-all duration-300 ${
-                  activeCategory === cat
-                    ? 'bg-white text-black shadow-md'
-                    : 'text-white/40 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Vertical Divider (Desktop Only) */}
-          <div className="hidden md:block w-px h-5 bg-white/10" />
-
-          {/* View Mode Selectors */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-full transition-all duration-300 ${
-                viewMode === 'grid' ? 'text-white bg-white/10' : 'text-white/35 hover:text-white'
-              }`}
-              aria-label="Grid View"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-                <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded-full transition-all duration-300 ${
-                viewMode === 'list' ? 'text-white bg-white/10' : 'text-white/35 hover:text-white'
-              }`}
-              aria-label="List View"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
-                <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Contact Section */}
-      <section id="contact" className="w-full bg-black py-24 md:py-32 px-6 border-t border-white/5 relative z-30">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-24">
-          
-          {/* Left Column: Info Block */}
-          <div className="flex flex-col justify-between gap-12">
-            <div className="flex flex-col gap-6">
-              <span className="font-primary font-bold text-[9px] tracking-[0.3em] uppercase text-white/40">
-                Get In Touch
-              </span>
-              <h2 className="font-primary font-black text-4xl md:text-6xl tracking-tight uppercase text-white leading-none">
-                Skip<br />Introductions.
-              </h2>
-              <p className="font-secondary text-white/50 text-xs md:text-sm leading-relaxed tracking-wide max-w-md mt-2">
-                We are always looking for bold brands, visionary artists, and innovative teams to collaborate on cinematic projects. Let's create something unforgettable.
-              </p>
-            </div>
-
-            {/* Direct Contact Links */}
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-1">
-                <span className="font-secondary text-[9px] tracking-widest text-white/20 uppercase">Email Us</span>
-                <a href={`mailto:${AGENCY_CONFIG.contact.email}`} className="font-primary font-bold text-base md:text-lg text-white hover:text-white/60 transition-all duration-300">
-                  {AGENCY_CONFIG.contact.email}
-                </a>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="font-secondary text-[9px] tracking-widest text-white/20 uppercase">Call or WhatsApp</span>
-                <a href={AGENCY_CONFIG.contact.whatsappUrl} target="_blank" rel="noopener noreferrer" className="font-primary font-bold text-base md:text-lg text-white hover:text-white/60 transition-all duration-300">
-                  {AGENCY_CONFIG.contact.phone}
-                </a>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="font-secondary text-[9px] tracking-widest text-white/20 uppercase">Location</span>
-                <span className="font-primary font-bold text-base md:text-lg text-white/80 uppercase">
-                  {AGENCY_CONFIG.contact.location}
-                </span>
-              </div>
-            </div>
-            
-            {/* Social Links & Copyright */}
-            <div className="flex flex-col gap-4">
-              <div className="flex gap-6">
-                {AGENCY_CONFIG.socials.map((soc) => (
-                  <a
-                    key={soc.platform}
-                    href={soc.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-primary font-bold text-[9px] tracking-widest uppercase text-white/40 hover:text-white transition-all duration-300"
-                  >
-                    {soc.platform}
-                  </a>
-                ))}
-              </div>
-              <span className="font-secondary text-[9px] text-white/20">
-                © {new Date().getFullYear()} NoIntro. All rights reserved.
-              </span>
-            </div>
-          </div>
-
-          {/* Right Column: Glassmorphic Contact Form */}
-          <div className="bg-[#050505] border border-white/5 p-8 md:p-10 rounded-2xl relative shadow-2xl">
-            <h3 className="font-primary font-black text-lg tracking-wider uppercase text-white mb-8">
-              Send an Inquiry
-            </h3>
-            
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-              <div className="flex flex-col gap-2">
-                <label htmlFor="name" className="font-secondary text-[9px] tracking-widest uppercase text-white/30">Your Name</label>
-                <input
-                  type="text"
-                  id="name"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="John Doe"
-                  className="bg-black border border-white/10 px-4 py-3 rounded-lg font-secondary text-sm text-white placeholder-white/20 focus:border-white focus:outline-none transition-all duration-300"
-                />
-              </div>
-              
-              <div className="flex flex-col gap-2">
-                <label htmlFor="email" className="font-secondary text-[9px] tracking-widest uppercase text-white/30">Email Address</label>
-                <input
-                  type="email"
-                  id="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="john@example.com"
-                  className="bg-black border border-white/10 px-4 py-3 rounded-lg font-secondary text-sm text-white placeholder-white/20 focus:border-white focus:outline-none transition-all duration-300"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label htmlFor="message" className="font-secondary text-[9px] tracking-widest uppercase text-white/30">Message</label>
-                <textarea
-                  id="message"
-                  required
-                  rows={4}
-                  value={formData.message}
-                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  placeholder="Tell us about your project, timeline, and goals..."
-                  className="bg-black border border-white/10 px-4 py-3 rounded-lg font-secondary text-sm text-white placeholder-white/20 focus:border-white focus:outline-none resize-none transition-all duration-300"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={formState === 'submitting'}
-                className="discover-work-btn w-full mt-2 font-primary font-bold text-xs tracking-[0.2em] text-center uppercase border border-white bg-transparent text-white py-4 hover:bg-white hover:text-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {formState === 'idle' && 'Submit Inquiry'}
-                {formState === 'submitting' && 'Sending...'}
-                {formState === 'success' && 'Message Sent!'}
-                {formState === 'error' && 'Failed to Send'}
-              </button>
-
-              {formMessage && (
-                <p className={`font-secondary text-[10px] text-center mt-2 tracking-wide ${
-                  formState === 'success' ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {formMessage}
-                </p>
-              )}
-            </form>
-          </div>
-
-        </div>
       </section>
 
       {/* Cinematic Detail Overlay */}
@@ -433,7 +205,6 @@ export default function HomePage() {
         <ProjectOverlay 
           project={selectedProject} 
           onClose={() => setSelectedProject(null)} 
-          aria-hidden={!selectedProject}
         />
       )}
 

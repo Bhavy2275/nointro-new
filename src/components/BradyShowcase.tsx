@@ -557,17 +557,6 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
         ))}
       </div>
 
-      {/* Top overlay displaying project metadata for the currently active/centered project */}
-      {projects.length > 0 && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 z-30 pointer-events-none text-center">
-          <span className="font-primary font-bold text-[9px] tracking-[0.3em] uppercase text-white/50 animate-fade">
-            {projects[activeIndex]?.tag}
-          </span>
-          <h3 className="font-primary font-black text-xs tracking-[0.2em] uppercase text-white">
-            {projects[activeIndex]?.title}
-          </h3>
-        </div>
-      )}
     </div>
   );
 }
