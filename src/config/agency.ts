@@ -23,9 +23,4 @@ export const AGENCY_CONFIG = {
     { value: '+100+', label: 'campaigns delivered' },
     { value: '+15', label: 'global awards' }
   ],
-
-  projectsVideos: {
-    project5: process.env.NEXT_PUBLIC_PROJECT_5_VIDEO || '/videos/hero.mp4',
-  },
-
 };

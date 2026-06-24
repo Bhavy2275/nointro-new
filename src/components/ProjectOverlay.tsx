@@ -85,7 +85,11 @@ export default function ProjectOverlay({ project, onClose }: ProjectOverlayProps
   }, { scope: overlayRef });
 
   const handleClose = useCallback(() => {
-    tl.current ? tl.current.reverse() : onClose();
+    if (tl.current) {
+      tl.current.reverse();
+    } else {
+      onClose();
+    }
   }, [onClose]);
 
   useEffect(() => {

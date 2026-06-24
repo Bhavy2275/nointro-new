@@ -82,15 +82,21 @@ function Card({
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
-    setTexture(tex);
 
-    return () => { tex.dispose(); };
+    const animId = requestAnimationFrame(() => {
+      setTexture(tex);
+    });
+
+    return () => {
+      cancelAnimationFrame(animId);
+      tex.dispose();
+    };
   }, [project.tag, project.title]);
 
 
   // Lazy video loader — preload=none until the card is close to center.
   // This prevents all 18 video files being read from disk simultaneously on mount.
-  const videoSrc = project.previewVideo || project.video;
+  const videoSrc = project.video;
   const videoLoadStarted = useRef(false);
 
   useEffect(() => {
@@ -167,8 +173,8 @@ function Card({
     const rel = wrapped < total / 2 ? wrapped : wrapped - total; // re-center to [-total/2, total/2)
 
     const dist = Math.abs(rel);
-    const shouldPlay = dist <= 4.0;  // Play all visible cards in the scene simultaneously
-    const shouldLoad = dist <= 4.0;  // Load all visible cards in the scene
+    const shouldPlay = dist <= 3.0;  // Play top 7 closest cards simultaneously
+    const shouldLoad = dist <= 3.0;  // Load top 7 closest cards
 
     // Lazy-load: trigger disk read only when card is close to center view
     if (videoRef.current && shouldLoad && !videoLoadStarted.current) {
@@ -326,7 +332,6 @@ function GridScene({
 
 export default function BradyShowcase({ projects, onCardClick, viewMode }: BradyShowcaseProps) {
   const [mounted, setMounted] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
   const [isHoveringGrid, setIsHoveringGrid] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -378,8 +383,6 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
     scroll.current = 0;
     targetScroll.current = 0;
     lastActiveIndex.current = 0;
-    const timer = setTimeout(() => setActiveIndex(0), 0);
-    return () => clearTimeout(timer);
   }, [projects]);
 
   // Main lerping animation tick
@@ -458,7 +461,6 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
       const activeIdx = ((Math.round(scroll.current) % n) + n) % n;
       if (activeIdx !== lastActiveIndex.current) {
         lastActiveIndex.current = activeIdx;
-        setActiveIndex(activeIdx);
       }
 
       frameId = requestAnimationFrame(tick);
@@ -494,7 +496,7 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
     }
   };
 
-  const handlePointerUp = (_e: React.PointerEvent) => {
+  const handlePointerUp = () => {
     pointerDownRef.current = null;
     // Small delay so isDragging stays true through the click event, then resets
     setTimeout(() => {

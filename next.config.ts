@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   poweredByHeader: false,
   compress: true,
   images: {
@@ -12,6 +13,10 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: '22icqgouubbjklkh.public.blob.vercel-storage.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'customer-6amjhasmm5fjjw52.cloudflarestream.com',
       },
     ],
   },
@@ -35,6 +40,10 @@ const nextConfig: NextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
           },
         ],
       },

@@ -22,10 +22,6 @@
   --font-secondary: var(--font-inter);
 }
 
-/* Default sharp edges, can be overridden by components */
-* {
-  border-radius: 0px;
-}
 
 html,
 body {
@@ -140,4 +136,6 @@ body::after {
   opacity: 0.03;
   pointer-events: none;
   z-index: 9999;
+  transform: translate3d(0, 0, 0); /* Force GPU composite layer */
+  will-change: opacity;
 }
