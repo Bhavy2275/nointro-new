@@ -5,23 +5,44 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { Project } from './projects';
 import ErrorBoundary from './ErrorBoundary';
+import {
+  CARD_OFFSETS,
+  CARD_LOAD_RADIUS,
+  CARD_PLAY_RADIUS,
+  WHEEL_SENSITIVITY,
+  IDLE_THRESHOLD_MS,
+  AUTO_DRIFT_SPEED,
+  DRAG_SENSITIVITY_DESKTOP,
+  DRAG_SENSITIVITY_MOBILE,
+  DRAG_THRESHOLD_PX,
+  SCROLL_LERP_FACTOR,
+  MESH_LERP_FACTOR,
+  MESH_INSTANT_THRESHOLD,
+  CARD_SPREAD_X_DESKTOP,
+  CARD_SPREAD_X_MOBILE,
+  CARD_DRIFT_Y_DESKTOP,
+  CARD_DRIFT_Y_MOBILE,
+  MOBILE_VIEWPORT_BREAKPOINT,
+  LIST_GAP_DESKTOP_PX,
+  LIST_GAP_MOBILE_PX,
+  LIST_BREAKPOINT_PX,
+  LIST_FOCUS_ACTIVE_THRESHOLD,
+  LIST_FOCUS_NEAR_THRESHOLD,
+  CARD_LONG_SIDE_LANDSCAPE,
+  CARD_LONG_SIDE_PORTRAIT,
+  CARD_SCALE_FALLOFF,
+  CARD_SCALE_MIN,
+  CARD_HOVER_SCALE,
+} from '@/config/constants';
+
+import { initHlsVideo } from '@/hooks/useHlsVideo';
+import type Hls from 'hls.js';
 
 interface BradyShowcaseProps {
   projects: Project[];
   onCardClick: (project: Project) => void;
   viewMode: 'grid' | 'list';
 }
-
-const OFFSETS = [
-  { x: 0.1, y: -0.05, z: 0, rx: 0.02, ry: -0.04, rz: 0.03 },
-  { x: -0.15, y: 0.08, z: -0.1, rx: -0.03, ry: 0.05, rz: -0.02 },
-  { x: 0.05, y: 0.12, z: 0.1, rx: 0.04, ry: -0.02, rz: 0.01 },
-  { x: -0.08, y: -0.1, z: -0.05, rx: -0.02, ry: 0.03, rz: -0.04 },
-  { x: 0.12, y: 0.02, z: 0.05, rx: 0.01, ry: -0.03, rz: 0.02 },
-];
-
-import { initHlsVideo } from '@/hooks/useHlsVideo';
-import type Hls from 'hls.js';
 
 function Card({
   project,
@@ -44,6 +65,7 @@ function Card({
   const hlsRef = useRef<Hls | null>(null);
   const [hovered, setHovered] = useState(false);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  const [videoError, setVideoError] = useState(false);
   const videoTextureRef = useRef<THREE.VideoTexture | null>(null);
   // Native video aspect ratio (width / height), defaults to 16/9 until video metadata loads
   const [videoAspect, setVideoAspect] = useState<number>(16 / 9);
@@ -131,6 +153,13 @@ function Card({
     };
     video.addEventListener('loadedmetadata', onMeta);
 
+    // Surface stream errors as a visible fallback texture instead of silent swallow
+    const onError = () => {
+      if (!active) return;
+      setVideoError(true);
+    };
+    video.addEventListener('error', onError);
+
     const tex = new THREE.VideoTexture(video);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.minFilter = THREE.LinearFilter;
@@ -143,6 +172,7 @@ function Card({
     return () => {
       active = false;
       video.removeEventListener('loadedmetadata', onMeta);
+      video.removeEventListener('error', onError);
       try {
         video.pause();
         if (hlsRef.current) {
@@ -174,8 +204,8 @@ function Card({
     const rel = wrapped < total / 2 ? wrapped : wrapped - total; // re-center to [-total/2, total/2)
 
     const dist = Math.abs(rel);
-    const shouldPlay = dist <= 3.0;  // Play top 7 closest cards simultaneously
-    const shouldLoad = dist <= 3.0;  // Load top 7 closest cards
+    const shouldPlay = dist <= CARD_PLAY_RADIUS;
+    const shouldLoad = dist <= CARD_LOAD_RADIUS;
 
     // Lazy-load: trigger disk read only when card is close to center view
     if (videoRef.current && shouldLoad && !videoLoadStarted.current) {
@@ -187,21 +217,24 @@ function Card({
       }
     }
 
-    // Play active video, pause others
-    if (videoRef.current) {
+    // Play active video, pause others — errors are surfaced via the 'error' event listener
+    if (videoRef.current && !videoError) {
       if (shouldPlay) {
-        if (videoRef.current.paused) videoRef.current.play().catch(() => {});
+        if (videoRef.current.paused) videoRef.current.play().catch((err: unknown) => {
+          console.warn('[BradyShowcase] play() failed:', err);
+          setVideoError(true);
+        });
       } else {
         if (!videoRef.current.paused) videoRef.current.pause();
       }
     }
 
-    const offset = OFFSETS[index % OFFSETS.length];
+    const offset = CARD_OFFSETS[index % CARD_OFFSETS.length];
 
     // Responsive position coefficients
-    const isMobile = state.viewport.width < 8;
-    const spreadX = isMobile ? 1.6 : 2.5;
-    const driftY = isMobile ? -0.26 : -0.42;
+    const isMobile = state.viewport.width < MOBILE_VIEWPORT_BREAKPOINT;
+    const spreadX = isMobile ? CARD_SPREAD_X_MOBILE : CARD_SPREAD_X_DESKTOP;
+    const driftY  = isMobile ? CARD_DRIFT_Y_MOBILE  : CARD_DRIFT_Y_DESKTOP;
 
     const targetX = offset.x + rel * spreadX;
     const targetY = offset.y + rel * driftY + Math.sin(t * 0.8 + index * 1.3) * 0.04;
@@ -212,32 +245,30 @@ function Card({
     const targetRZ = offset.rz;
 
     // active focus scaling
-    const activeScale = hovered ? 1.08 : 1.0;
-    const targetScale = Math.max(0.72, 1 - dist * 0.12) * activeScale;
+    const activeScale = hovered ? CARD_HOVER_SCALE : 1.0;
+    const targetScale = Math.max(CARD_SCALE_MIN, 1 - dist * CARD_SCALE_FALLOFF) * activeScale;
 
-    // Fix 1: Skip lerp block entirely for distant cards and do a cheap instant set
-    if (dist > 4) {
+    // Skip lerp for distant cards — cheap instant set
+    if (dist > MESH_INSTANT_THRESHOLD) {
       meshRef.current.position.set(targetX, targetY, targetZ);
       meshRef.current.rotation.set(targetRX, targetRY, targetRZ);
       meshRef.current.scale.setScalar(targetScale);
-      // Fix 2: avoid touching materialRef.current.map at all for cards where dist > 4
       return;
     }
 
-    const lerpFactor = 0.12; // increased from 0.08 for snappier, less laggy motion
-    meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, targetX, lerpFactor);
-    meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, targetY, lerpFactor);
-    meshRef.current.position.z = THREE.MathUtils.lerp(meshRef.current.position.z, targetZ, lerpFactor);
+    meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, targetX, MESH_LERP_FACTOR);
+    meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, targetY, MESH_LERP_FACTOR);
+    meshRef.current.position.z = THREE.MathUtils.lerp(meshRef.current.position.z, targetZ, MESH_LERP_FACTOR);
 
-    meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, targetRX, lerpFactor);
-    meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, targetRY, lerpFactor);
-    meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, targetRZ, lerpFactor);
+    meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, targetRX, MESH_LERP_FACTOR);
+    meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, targetRY, MESH_LERP_FACTOR);
+    meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, targetRZ, MESH_LERP_FACTOR);
 
-    meshRef.current.scale.setScalar(THREE.MathUtils.lerp(meshRef.current.scale.x, targetScale, lerpFactor));
+    meshRef.current.scale.setScalar(THREE.MathUtils.lerp(meshRef.current.scale.x, targetScale, MESH_LERP_FACTOR));
 
-    // Fix 2: Material texture swap logic (only runs when dist <= 4)
+    // Material texture swap logic (only runs when dist <= MESH_INSTANT_THRESHOLD)
     if (materialRef.current) {
-      const isVideoReady = videoRef.current && videoRef.current.readyState >= 2;
+      const isVideoReady = !videoError && videoRef.current && videoRef.current.readyState >= 2;
       const activeTexture = (shouldPlay && isVideoReady && videoTextureRef.current) ? videoTextureRef.current : texture;
       if (materialRef.current.map !== activeTexture) {
         materialRef.current.map = activeTexture;
@@ -247,10 +278,10 @@ function Card({
   });
 
   // Normalize by the LONG side so portrait and landscape cards have similar visual weight:
-  //   landscape (aspect ≥ 1): long side = width  → cardW = 4.8,  cardH = 4.8 / aspect
-  //   portrait  (aspect < 1): long side = height → cardH = 4.0,  cardW = 4.0 * aspect
-  const cardW = videoAspect >= 1 ? 4.8 : 4.0 * videoAspect;
-  const cardH = videoAspect >= 1 ? 4.8 / videoAspect : 4.0;
+  //   landscape (aspect ≥ 1): long side = width  → cardW = CARD_LONG_SIDE_LANDSCAPE, cardH = / aspect
+  //   portrait  (aspect < 1): long side = height → cardH = CARD_LONG_SIDE_PORTRAIT,  cardW = * aspect
+  const cardW = videoAspect >= 1 ? CARD_LONG_SIDE_LANDSCAPE : CARD_LONG_SIDE_PORTRAIT * videoAspect;
+  const cardH = videoAspect >= 1 ? CARD_LONG_SIDE_LANDSCAPE / videoAspect : CARD_LONG_SIDE_PORTRAIT;
 
   return (
     <mesh
@@ -349,8 +380,7 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
       const rect = container.getBoundingClientRect();
       // Only rotate the carousel if the Showcase is in viewport view
       if (rect.top < window.innerHeight && rect.bottom > 0) {
-        const wheelSensitivity = 0.0004;
-        targetScroll.current += e.deltaY * wheelSensitivity;
+        targetScroll.current += e.deltaY * WHEEL_SENSITIVITY;
       }
     };
 
@@ -382,14 +412,14 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
       }
 
       // Cinematic slow auto-drift when not actively scrolling/dragging/hovering
-      const isIdle = (Date.now() - lastWheelTime.current > 1500) && !isDraggingRef.current && !isHoveringGrid;
+      const isIdle = (Date.now() - lastWheelTime.current > IDLE_THRESHOLD_MS) && !isDraggingRef.current && !isHoveringGrid;
       if (isIdle) {
-        targetScroll.current += 0.0006;
+        targetScroll.current += AUTO_DRIFT_SPEED;
       }
 
-      // Smooth lerp — increased factor for snappier response
+      // Smooth lerp
       const diff = targetScroll.current - scroll.current;
-      scroll.current += diff * 0.12;
+      scroll.current += diff * SCROLL_LERP_FACTOR;
 
       // Wrap scroll values seamlessly
       while (targetScroll.current >= n) {
@@ -411,7 +441,7 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
       if (viewMode === 'list' && listContainerRef.current) {
         const items = listContainerRef.current.children;
         const totalItems = n;
-        const gap = window.innerWidth < 768 ? 52 : 72;
+        const gap = window.innerWidth < LIST_BREAKPOINT_PX ? LIST_GAP_MOBILE_PX : LIST_GAP_DESKTOP_PX;
 
         for (let i = 0; i < totalItems; i++) {
           const item = items[i] as HTMLElement;
@@ -428,10 +458,10 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
           item.style.transform = `translate(-50%, calc(-50% + ${y}px))`;
 
           // Add visual focus states
-          if (dist < 0.5) {
+          if (dist < LIST_FOCUS_ACTIVE_THRESHOLD) {
             item.classList.add('active');
             item.classList.remove('near', 'far');
-          } else if (dist < 1.5) {
+          } else if (dist < LIST_FOCUS_NEAR_THRESHOLD) {
             item.classList.add('near');
             item.classList.remove('active', 'far');
           } else {
@@ -470,11 +500,11 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
     const deltaY = e.clientY - pointerDownRef.current.y;
     const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-    // Only start drag if pointer moved more than 6px (avoids eating tap clicks)
-    if (dist > 6) {
+    // Only start drag if pointer moved more than DRAG_THRESHOLD_PX (avoids eating tap clicks)
+    if (dist > DRAG_THRESHOLD_PX) {
       isDraggingRef.current = true;
       // Convert drag pixel displacement to scroll units
-      const sensitivity = window.innerWidth < 768 ? 1.5 : 1.0;
+      const sensitivity = window.innerWidth < 768 ? DRAG_SENSITIVITY_MOBILE : DRAG_SENSITIVITY_DESKTOP;
       const scrollDelta = -(deltaX / window.innerWidth) * sensitivity;
       targetScroll.current = pointerDownRef.current.scrollVal + scrollDelta;
     }

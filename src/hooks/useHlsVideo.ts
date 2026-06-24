@@ -51,16 +51,6 @@ export function useHlsVideo(videoUrl: string | undefined, options: UseHlsVideoOp
 
   const { autoplay, muted, loop, playsInline, crossOrigin, onMetadataLoaded } = options;
 
-  // Initialize video element programmatically on the client if it hasn't been set yet.
-  // Note: For JSX bindings, React will assign the JSX element to `videoRef.current` at mount.
-  if (typeof window !== 'undefined' && !videoRef.current) {
-    const video = document.createElement('video');
-    if (crossOrigin) video.crossOrigin = crossOrigin;
-    if (loop !== undefined) video.loop = loop;
-    if (playsInline !== undefined) video.playsInline = playsInline;
-    videoRef.current = video;
-  }
-
   // Use ref for callback to avoid re-triggering the main effect on every render if the callback isn't memoized.
   const onMetadataLoadedRef = useRef(onMetadataLoaded);
   useEffect(() => {
