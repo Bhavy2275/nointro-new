@@ -58,6 +58,7 @@ export default function HomePage() {
       video.src = videoUrl;
     }
 
+    video.muted = true;
     video.play().catch(() => {});
 
     return () => {
