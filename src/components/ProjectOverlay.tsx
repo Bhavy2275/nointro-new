@@ -6,7 +6,7 @@ import { useGSAP } from '@gsap/react';
 import type { Project } from './projects';
 import { useLenis } from '@/context/SmoothScrollContext';
 
-import Hls from 'hls.js';
+import { useHlsVideo } from '@/hooks/useHlsVideo';
 
 interface ProjectOverlayProps {
   project: Project;
@@ -17,7 +17,13 @@ export default function ProjectOverlay({ project, onClose }: ProjectOverlayProps
   const overlayRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const { videoRef } = useHlsVideo(project.video, {
+    autoplay: true,
+    muted: false,
+    loop: true,
+    playsInline: true,
+  });
+
   const tl = useRef<gsap.core.Timeline | null>(null);
   const lenis = useLenis();
 
@@ -26,48 +32,6 @@ export default function ProjectOverlay({ project, onClose }: ProjectOverlayProps
     lenis?.stop();
     return () => { lenis?.start(); };
   }, [lenis]);
-
-  // Auto-play video when overlay opens
-  useEffect(() => {
-    const vid = videoRef.current;
-    if (!vid || !project.video) return;
-
-    let hls: Hls | null = null;
-
-    if (project.video.includes('.m3u8')) {
-      if (vid.canPlayType('application/vnd.apple.mpegurl')) {
-        // Native HLS support (Safari/iOS)
-        vid.src = project.video;
-      } else if (Hls.isSupported()) {
-        // hls.js support (Chrome/Firefox/etc.)
-        const hlsInstance = new Hls({
-          capLevelToPlayerSize: false,
-        });
-        hls = hlsInstance;
-        hlsInstance.loadSource(project.video);
-        hlsInstance.attachMedia(vid);
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-          // Force the highest quality level (1080p/720p)
-          hlsInstance.currentLevel = hlsInstance.levels.length - 1;
-        });
-      }
-    } else {
-      // Normal video fallback (mp4/mov)
-      vid.src = project.video;
-    }
-
-    vid.play().catch(() => {});
-
-    return () => {
-      vid.pause();
-      if (hls) {
-        hls.destroy();
-      } else {
-        vid.src = '';
-        vid.load();
-      }
-    };
-  }, [project.video]);
 
   // Zoom-in entrance animation
   useGSAP(() => {

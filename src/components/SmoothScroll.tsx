@@ -6,15 +6,16 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SmoothScrollContext } from '@/context/SmoothScrollContext';
 
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger);
+}
+
 export default function SmoothScroll({ children }: { children: React.ReactNode }) {
   const [lenisInstance, setLenisInstance] = useState<Lenis | null>(null);
 
   useEffect(() => {
     // Only run on client
     if (typeof window === 'undefined') return;
-
-    // Register ScrollTrigger
-    gsap.registerPlugin(ScrollTrigger);
 
     // Initialize Lenis
     const lenis = new Lenis({

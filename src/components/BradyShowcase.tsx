@@ -20,7 +20,8 @@ const OFFSETS = [
   { x: 0.12, y: 0.02, z: 0.05, rx: 0.01, ry: -0.03, rz: 0.02 },
 ];
 
-import Hls from 'hls.js';
+import { initHlsVideo } from '@/hooks/useHlsVideo';
+import type Hls from 'hls.js';
 
 function Card({
   project,
@@ -180,26 +181,9 @@ function Card({
     if (videoRef.current && shouldLoad && !videoLoadStarted.current) {
       videoLoadStarted.current = true;
       const video = videoRef.current;
-      if (videoSrc && videoSrc.includes('.m3u8')) {
-        if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          video.preload = 'auto';
-          video.load();
-        } else if (Hls.isSupported()) {
-          const hls = new Hls({
-            capLevelToPlayerSize: false,
-            defaultAudioCodec: 'mp4a.40.2' // optimization
-          });
-          hls.loadSource(videoSrc);
-          hls.attachMedia(video);
-          hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            // Force the highest quality level (1080p/720p)
-            hls.currentLevel = hls.levels.length - 1;
-          });
-          hlsRef.current = hls;
-        }
-      } else {
-        video.preload = 'auto';
-        video.load();
+      video.preload = 'auto';
+      if (videoSrc) {
+        hlsRef.current = initHlsVideo(video, videoSrc);
       }
     }
 
