@@ -6,6 +6,8 @@ import { useGSAP } from '@gsap/react';
 import type { Project } from './projects';
 import { useLenis } from '@/context/SmoothScrollContext';
 
+import Hls from 'hls.js';
+
 interface ProjectOverlayProps {
   project: Project;
   onClose: () => void;
@@ -29,8 +31,42 @@ export default function ProjectOverlay({ project, onClose }: ProjectOverlayProps
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid || !project.video) return;
+
+    let hls: Hls | null = null;
+
+    if (project.video.includes('.m3u8')) {
+      if (vid.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS support (Safari/iOS)
+        vid.src = project.video;
+      } else if (Hls.isSupported()) {
+        // hls.js support (Chrome/Firefox/etc.)
+        const hlsInstance = new Hls({
+          capLevelToPlayerSize: false,
+        });
+        hls = hlsInstance;
+        hlsInstance.loadSource(project.video);
+        hlsInstance.attachMedia(vid);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+          // Force the highest quality level (1080p/720p)
+          hlsInstance.currentLevel = hlsInstance.levels.length - 1;
+        });
+      }
+    } else {
+      // Normal video fallback (mp4/mov)
+      vid.src = project.video;
+    }
+
     vid.play().catch(() => {});
-    return () => { vid.pause(); vid.currentTime = 0; };
+
+    return () => {
+      vid.pause();
+      if (hls) {
+        hls.destroy();
+      } else {
+        vid.src = '';
+        vid.load();
+      }
+    };
   }, [project.video]);
 
   // Zoom-in entrance animation
@@ -84,7 +120,6 @@ export default function ProjectOverlay({ project, onClose }: ProjectOverlayProps
           <div className="relative w-full bg-black" style={{ aspectRatio: '16/9' }}>
             <video
               ref={videoRef}
-              src={project.video}
               className="w-full h-full object-contain"
               controls
               playsInline

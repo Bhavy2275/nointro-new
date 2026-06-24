@@ -20,6 +20,8 @@ const OFFSETS = [
   { x: 0.12, y: 0.02, z: 0.05, rx: 0.01, ry: -0.03, rz: 0.02 },
 ];
 
+import Hls from 'hls.js';
+
 function Card({
   project,
   index,
@@ -38,6 +40,7 @@ function Card({
   const meshRef = useRef<THREE.Mesh>(null!);
   const materialRef = useRef<THREE.MeshBasicMaterial>(null!);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const [hovered, setHovered] = useState(false);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const videoTextureRef = useRef<THREE.VideoTexture | null>(null);
@@ -96,8 +99,14 @@ function Card({
     let active = true;
     const video = document.createElement('video');
     video.crossOrigin = 'anonymous';
-    const separator = videoSrc.includes('?') ? '&' : '?';
-    video.src = `${videoSrc}${separator}cv=1`;
+
+    if (!videoSrc.includes('.m3u8')) {
+      const separator = videoSrc.includes('?') ? '&' : '?';
+      video.src = `${videoSrc}${separator}cv=1`;
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = videoSrc;
+    }
+
     video.muted = true;
     video.loop = true;
     video.playsInline = true;
@@ -129,6 +138,10 @@ function Card({
       video.removeEventListener('loadedmetadata', onMeta);
       try {
         video.pause();
+        if (hlsRef.current) {
+          hlsRef.current.destroy();
+          hlsRef.current = null;
+        }
         video.src = '';
         video.load();
       } catch (err) {
@@ -154,17 +167,37 @@ function Card({
     const rel = wrapped < total / 2 ? wrapped : wrapped - total; // re-center to [-total/2, total/2)
 
     const dist = Math.abs(rel);
-    const shouldPlay = dist < 1.0;  // Fix 3: only play center card to cap concurrent GPU uploads to 1 video
-    const shouldLoad = dist < 3;    // start buffering when 3 positions away
+    const shouldPlay = dist <= 4.0;  // Play all visible cards in the scene simultaneously
+    const shouldLoad = dist <= 4.0;  // Load all visible cards in the scene
 
     // Lazy-load: trigger disk read only when card is close to center view
     if (videoRef.current && shouldLoad && !videoLoadStarted.current) {
       videoLoadStarted.current = true;
-      videoRef.current.preload = 'auto';
-      videoRef.current.load();
+      const video = videoRef.current;
+      if (videoSrc && videoSrc.includes('.m3u8')) {
+        if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.preload = 'auto';
+          video.load();
+        } else if (Hls.isSupported()) {
+          const hls = new Hls({
+            capLevelToPlayerSize: false,
+            defaultAudioCodec: 'mp4a.40.2' // optimization
+          });
+          hls.loadSource(videoSrc);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            // Force the highest quality level (1080p/720p)
+            hls.currentLevel = hls.levels.length - 1;
+          });
+          hlsRef.current = hls;
+        }
+      } else {
+        video.preload = 'auto';
+        video.load();
+      }
     }
 
-    // Play active center video, pause others
+    // Play active video, pause others
     if (videoRef.current) {
       if (shouldPlay) {
         if (videoRef.current.paused) videoRef.current.play().catch(() => {});

@@ -22,11 +22,54 @@ const BradyShowcase = dynamic(
   }
 );
 
+import Hls from 'hls.js';
+
 export default function HomePage() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   
   const heroRef = useRef<HTMLDivElement>(null);
   const taglineRef = useRef<HTMLDivElement>(null);
+  const heroVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Handle Hero Video HLS streaming
+  useEffect(() => {
+    const video = heroVideoRef.current;
+    if (!video) return;
+
+    let hls: Hls | null = null;
+    const videoUrl = AGENCY_CONFIG.heroVideoUrl;
+
+    if (videoUrl.includes('.m3u8')) {
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = videoUrl;
+      } else if (Hls.isSupported()) {
+        const hlsInstance = new Hls({
+          capLevelToPlayerSize: false,
+        });
+        hls = hlsInstance;
+        hlsInstance.loadSource(videoUrl);
+        hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+          // Force the highest quality level (1080p/720p)
+          hlsInstance.currentLevel = hlsInstance.levels.length - 1;
+        });
+      }
+    } else {
+      video.src = videoUrl;
+    }
+
+    video.play().catch(() => {});
+
+    return () => {
+      video.pause();
+      if (hls) {
+        hls.destroy();
+      } else {
+        video.src = '';
+        video.load();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Register ScrollTrigger plugin on client mount
@@ -89,19 +132,13 @@ export default function HomePage() {
           <div className="hero-bg-media w-full h-[130%] absolute -top-[15%] left-0">
             {/* Background Loop Video - Self-hosted local video asset */}
             <video
-              ref={(el) => {
-                if (el) {
-                  el.muted = true;
-                  el.play().catch(() => {});
-                }
-              }}
+              ref={heroVideoRef}
               className="w-full h-full object-cover relative z-10"
               autoPlay
               muted
               loop
               playsInline
               preload="auto"
-              src={AGENCY_CONFIG.heroVideoUrl}
             />
           </div>
           {/* Bottom Dark Gradient Overlay */}
