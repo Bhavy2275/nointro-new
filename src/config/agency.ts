@@ -2,7 +2,7 @@
 // Allows dynamic overriding via environment variables with safe defaults.
 
 export const AGENCY_CONFIG = {
-  heroVideoUrl: process.env.NEXT_PUBLIC_HERO_VIDEO_URL || 'https://customer-6amjhasmm5fjjw52.cloudflarestream.com/e4801572bf93baceff7d122c9be95434/downloads/default.mp4',
+  heroVideoUrl: process.env.NEXT_PUBLIC_HERO_VIDEO_URL || 'https://stream.nointroproductions.com/e4801572bf93baceff7d122c9be95434/downloads/default.mp4',
 
   contact: {
     email: process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'hello@nointro.agency',
