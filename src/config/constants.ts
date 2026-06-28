@@ -44,6 +44,12 @@ export const MESH_LERP_FACTOR = 0.12;
 /** Cards beyond this distance skip lerp and are positioned instantly (perf). */
 export const MESH_INSTANT_THRESHOLD = 4;
 
+/** Lerp factor for the card expand / collapse animation. */
+export const CARD_EXPAND_LERP = 0.08;
+
+/** How far off-screen (world units) non-expanded cards slide when one card expands. */
+export const CARD_OFFSCREEN_X = 20;
+
 // ─── Layout ──────────────────────────────────────────────────────────────────
 
 /** Horizontal spread between cards (3-D units) on desktop. */

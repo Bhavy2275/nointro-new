@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import ProjectOverlay from '@/components/ProjectOverlay';
-import { projects as marqueeProjects, Project } from '@/components/projects';
+import { projects as marqueeProjects } from '@/components/projects';
 import dynamic from 'next/dynamic';
 import { AGENCY_CONFIG } from '@/config/agency';
+import ContactStrip from '@/components/ContactStrip';
 
 const BradyShowcase = dynamic(
   () => import('@/components/BradyShowcase'),
@@ -25,8 +25,6 @@ const BradyShowcase = dynamic(
 import { useHlsVideo } from '@/hooks/useHlsVideo';
 
 export default function HomePage() {
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  
   const heroRef = useRef<HTMLDivElement>(null);
   const taglineRef = useRef<HTMLDivElement>(null);
 
@@ -190,18 +188,12 @@ export default function HomePage() {
         {/* Edge-to-edge Brady Perron 3D stack / list showcase */}
         <BradyShowcase
           projects={marqueeProjects}
-          onCardClick={(project) => setSelectedProject(project)}
           viewMode="grid"
         />
       </section>
 
-      {/* Cinematic Detail Overlay */}
-      {selectedProject && (
-        <ProjectOverlay 
-          project={selectedProject} 
-          onClose={() => setSelectedProject(null)} 
-        />
-      )}
+      {/* Contact strip — full-width footer */}
+      <ContactStrip />
 
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { Project } from './projects';
@@ -18,6 +18,8 @@ import {
   SCROLL_LERP_FACTOR,
   MESH_LERP_FACTOR,
   MESH_INSTANT_THRESHOLD,
+  CARD_EXPAND_LERP,
+  CARD_OFFSCREEN_X,
   CARD_SPREAD_X_DESKTOP,
   CARD_SPREAD_X_MOBILE,
   CARD_DRIFT_Y_DESKTOP,
@@ -40,23 +42,264 @@ import type Hls from 'hls.js';
 
 interface BradyShowcaseProps {
   projects: Project[];
-  onCardClick: (project: Project) => void;
   viewMode: 'grid' | 'list';
 }
+
+// ── Expanded info overlay ─────────────────────────────────────────────────────
+
+function ExpandedInfoOverlay({
+  project,
+  onCollapse,
+}: {
+  project: Project;
+  onCollapse: () => void;
+}) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Intercept wheel & touch events at the container level so they never
+  // reach Lenis's window listener. Lenis calls preventDefault() even when
+  // stopped, which blocks native overflow scroll. stopPropagation here
+  // prevents Lenis from ever seeing the event.
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const stopProp = (e: Event) => e.stopPropagation();
+    el.addEventListener('wheel', stopProp, { passive: true });
+    el.addEventListener('touchstart', stopProp, { passive: true });
+    el.addEventListener('touchmove', stopProp, { passive: true });
+    return () => {
+      el.removeEventListener('wheel', stopProp);
+      el.removeEventListener('touchstart', stopProp);
+      el.removeEventListener('touchmove', stopProp);
+    };
+  }, []);
+
+  // Escape key to collapse
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCollapse(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCollapse]);
+
+  return (
+    <>
+      {/* Scrollable info overlay */}
+      <div
+        ref={scrollContainerRef}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 50,
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        {/* ── First viewport — clicking here collapses, scrolling reveals info ── */}
+        <div
+          onClick={onCollapse}
+          style={{
+            height: '100dvh',
+            position: 'relative',
+            cursor: 'default',
+          }}
+        >
+          {/* Close button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onCollapse(); }}
+            aria-label="Close"
+            style={{
+              position: 'absolute',
+              top: '1.5rem',
+              right: '1.5rem',
+              zIndex: 60,
+              width: '2.5rem',
+              height: '2.5rem',
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: 'rgba(255,255,255,0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: '1rem',
+            }}
+          >
+            ✕
+          </button>
+
+          {/* Scroll hint — bottom of first viewport */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '2.5rem',
+              left: 0,
+              right: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '0.5rem',
+              pointerEvents: 'none',
+            }}
+          >
+            <span
+              style={{
+                fontFamily: 'var(--font-montserrat), sans-serif',
+                fontWeight: 700,
+                fontSize: '0.6rem',
+                letterSpacing: '0.35em',
+                color: 'rgba(255,255,255,0.45)',
+                textTransform: 'uppercase',
+              }}
+            >
+              More Info
+            </span>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="rgba(255,255,255,0.4)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ animation: 'bounce-down 1.4s ease-in-out infinite' }}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
+        </div>
+
+        {/* ── Info panel — slides up when user scrolls ── */}
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: 'rgba(8,8,8,0.97)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            padding: 'clamp(2rem, 5vw, 3.5rem) clamp(1.5rem, 6vw, 4rem) 5rem',
+            minHeight: '50dvh',
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+          }}
+        >
+          {/* Tag */}
+          <span
+            style={{
+              display: 'inline-block',
+              fontFamily: 'var(--font-montserrat), sans-serif',
+              fontWeight: 700,
+              fontSize: '0.6rem',
+              letterSpacing: '0.3em',
+              color: 'rgba(255,255,255,0.4)',
+              textTransform: 'uppercase',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '999px',
+              padding: '0.25rem 0.75rem',
+              marginBottom: '1rem',
+            }}
+          >
+            {project.tag}
+          </span>
+
+          {/* Title */}
+          <h2
+            style={{
+              fontFamily: 'var(--font-montserrat), sans-serif',
+              fontWeight: 900,
+              fontSize: 'clamp(1.8rem, 5vw, 3.5rem)',
+              letterSpacing: '-0.02em',
+              color: '#ffffff',
+              textTransform: 'uppercase',
+              lineHeight: 1.05,
+              marginBottom: '1.5rem',
+            }}
+          >
+            {project.title}
+          </h2>
+
+          {/* Divider */}
+          <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '1.5rem' }} />
+
+          {/* Description */}
+          <p
+            style={{
+              fontFamily: 'var(--font-inter), sans-serif',
+              fontSize: '0.875rem',
+              color: 'rgba(255,255,255,0.55)',
+              lineHeight: 1.75,
+              letterSpacing: '0.02em',
+              marginBottom: '2rem',
+              maxWidth: '60ch',
+            }}
+          >
+            {project.description}
+          </p>
+
+          {/* Metadata grid */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
+            {Object.entries(project.meta).map(([key, val]) => (
+              <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-inter), sans-serif',
+                    fontSize: '0.55rem',
+                    letterSpacing: '0.3em',
+                    color: 'rgba(255,255,255,0.25)',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {key}
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-montserrat), sans-serif',
+                    fontWeight: 700,
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.1em',
+                    color: 'rgba(255,255,255,0.8)',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {val}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Bounce keyframe */}
+      <style>{`
+        @keyframes bounce-down {
+          0%, 100% { transform: translateY(0);   opacity: 0.4; }
+          50%       { transform: translateY(6px); opacity: 0.85; }
+        }
+      `}</style>
+    </>
+  );
+}
+
+// ── Card ──────────────────────────────────────────────────────────────────────
 
 function Card({
   project,
   index,
   total,
   scrollRef,
-  onClick,
+  isExpanded,
+  anyExpanded,
+  onExpand,
+  onCollapse,
   onHoverChange,
 }: {
   project: Project;
   index: number;
   total: number;
   scrollRef: React.MutableRefObject<number>;
-  onClick: () => void;
+  isExpanded: boolean;
+  anyExpanded: boolean;
+  onExpand: () => void;
+  onCollapse: () => void;
   onHoverChange: (hovered: boolean) => void;
 }) {
   const meshRef = useRef<THREE.Mesh>(null!);
@@ -67,84 +310,51 @@ function Card({
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [videoError, setVideoError] = useState(false);
   const videoTextureRef = useRef<THREE.VideoTexture | null>(null);
-  // Native video aspect ratio (width / height), defaults to 16/9 until video metadata loads
   const [videoAspect, setVideoAspect] = useState<number>(16 / 9);
 
-  // Canvas text placeholder — dark card with project tag + title, no external image requests
+  // Canvas text placeholder
   useEffect(() => {
     const W = 960, H = 540;
     const canvas = document.createElement('canvas');
-    canvas.width = W;
-    canvas.height = H;
+    canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d')!;
-
-    // Dark gradient background
     const grad = ctx.createLinearGradient(0, 0, W, H);
-    grad.addColorStop(0, '#111111');
-    grad.addColorStop(1, '#0a0a0a');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
-
-    // Subtle border
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 2;
+    grad.addColorStop(0, '#111111'); grad.addColorStop(1, '#0a0a0a');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 2;
     ctx.strokeRect(1, 1, W - 2, H - 2);
-
-    // Tag line
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.font = 'bold 22px system-ui, sans-serif';
-    ctx.letterSpacing = '6px';
+    ctx.font = 'bold 22px system-ui, sans-serif'; ctx.letterSpacing = '6px';
     ctx.textAlign = 'center';
     ctx.fillText(project.tag.toUpperCase(), W / 2, H / 2 - 28);
-
-    // Title
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.font = 'bold 48px system-ui, sans-serif';
-    ctx.letterSpacing = '1px';
+    ctx.font = 'bold 48px system-ui, sans-serif'; ctx.letterSpacing = '1px';
     ctx.fillText(project.title.toUpperCase(), W / 2, H / 2 + 28);
-
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
-
-    const animId = requestAnimationFrame(() => {
-      setTexture(tex);
-    });
-
-    return () => {
-      cancelAnimationFrame(animId);
-      tex.dispose();
-    };
+    const animId = requestAnimationFrame(() => { setTexture(tex); });
+    return () => { cancelAnimationFrame(animId); tex.dispose(); };
   }, [project.tag, project.title]);
 
-
-  // Lazy video loader — preload=none until the card is close to center.
-  // This prevents all 18 video files being read from disk simultaneously on mount.
+  // Lazy video loader
   const videoSrc = project.video;
   const videoLoadStarted = useRef(false);
 
   useEffect(() => {
     if (!videoSrc) return;
-
     let active = true;
     const video = document.createElement('video');
     video.crossOrigin = 'anonymous';
-
     if (!videoSrc.includes('.m3u8')) {
       const separator = videoSrc.includes('?') ? '&' : '?';
       video.src = `${videoSrc}${separator}cv=1`;
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = videoSrc;
     }
+    video.muted = true; video.loop = true; video.playsInline = true;
+    video.preload = 'none'; video.setAttribute('decoding', 'async');
+    videoRef.current = video; videoLoadStarted.current = false;
 
-    video.muted = true;
-    video.loop = true;
-    video.playsInline = true;
-    video.preload = 'none'; // ← no disk I/O until card is near center
-    video.setAttribute('decoding', 'async');
-    videoRef.current = video;
-    videoLoadStarted.current = false;
-
-    // Detect native aspect ratio once metadata is available
     const onMeta = () => {
       if (!active) return;
       if (video.videoWidth > 0 && video.videoHeight > 0) {
@@ -152,22 +362,13 @@ function Card({
       }
     };
     video.addEventListener('loadedmetadata', onMeta);
-
-    // Surface stream errors as a visible fallback texture instead of silent swallow
-    const onError = () => {
-      if (!active) return;
-      setVideoError(true);
-    };
+    const onError = () => { if (!active) return; setVideoError(true); };
     video.addEventListener('error', onError);
 
     const tex = new THREE.VideoTexture(video);
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.minFilter = THREE.LinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-
-    if (active) {
-      videoTextureRef.current = tex;
-    }
+    tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+    if (active) { videoTextureRef.current = tex; }
 
     return () => {
       active = false;
@@ -175,49 +376,92 @@ function Card({
       video.removeEventListener('error', onError);
       try {
         video.pause();
-        if (hlsRef.current) {
-          hlsRef.current.destroy();
-          hlsRef.current = null;
-        }
-        video.src = '';
-        video.load();
-      } catch (err) {
-        console.warn('Video cleanup failed:', err);
-      }
+        if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+        video.src = ''; video.load();
+      } catch (err) { console.warn('Video cleanup failed:', err); }
       if (tex) { try { tex.dispose(); } catch {} }
-      videoTextureRef.current = null;
-      videoRef.current = null;
+      videoTextureRef.current = null; videoRef.current = null;
       videoLoadStarted.current = false;
     };
   }, [videoSrc]);
 
+  const cardW = videoAspect >= 1 ? CARD_LONG_SIDE_LANDSCAPE : CARD_LONG_SIDE_PORTRAIT * videoAspect;
+  const cardH = videoAspect >= 1 ? CARD_LONG_SIDE_LANDSCAPE / videoAspect : CARD_LONG_SIDE_PORTRAIT;
+
   useFrame((state) => {
-    if (!meshRef.current) return;
+    if (!meshRef.current || !materialRef.current) return;
 
     const t = state.clock.getElapsedTime();
     const scrollVal = scrollRef.current;
-
-    // Correct circular wrapping: always produce a value in [-total/2, total/2)
-    // Using a two-step modulo that guarantees non-negative before centering
     const raw = index - scrollVal;
-    const wrapped = ((raw % total) + total) % total; // always in [0, total)
-    const rel = wrapped < total / 2 ? wrapped : wrapped - total; // re-center to [-total/2, total/2)
-
+    const wrapped = ((raw % total) + total) % total;
+    const rel = wrapped < total / 2 ? wrapped : wrapped - total;
     const dist = Math.abs(rel);
+
+    // ── EXPANDED: this card grows to fill the screen ────────────────────────
+    if (isExpanded) {
+      const vpW = state.viewport.width;
+      const vpH = state.viewport.height;
+      const fillScale = Math.min(vpW / cardW, vpH / cardH);
+
+      meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, 0, CARD_EXPAND_LERP);
+      meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, 0, CARD_EXPAND_LERP);
+      meshRef.current.position.z = THREE.MathUtils.lerp(meshRef.current.position.z, 0.5, CARD_EXPAND_LERP);
+      meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, 0, CARD_EXPAND_LERP);
+      meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, 0, CARD_EXPAND_LERP);
+      meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, 0, CARD_EXPAND_LERP);
+      meshRef.current.scale.x = THREE.MathUtils.lerp(meshRef.current.scale.x, fillScale, CARD_EXPAND_LERP);
+      meshRef.current.scale.y = THREE.MathUtils.lerp(meshRef.current.scale.y, fillScale, CARD_EXPAND_LERP);
+      meshRef.current.scale.z = 1;
+      materialRef.current.opacity = THREE.MathUtils.lerp(materialRef.current.opacity, 1, CARD_EXPAND_LERP);
+
+      // Ensure video is loaded + playing
+      if (videoRef.current && !videoError) {
+        if (!videoLoadStarted.current && videoSrc) {
+          videoLoadStarted.current = true;
+          videoRef.current.preload = 'auto';
+          hlsRef.current = initHlsVideo(videoRef.current, videoSrc);
+        }
+        if (videoRef.current.paused) {
+          videoRef.current.play().catch((err: unknown) => {
+            console.warn('[BradyShowcase] play() failed:', err);
+            setVideoError(true);
+          });
+        }
+      }
+
+      const isVideoReady = !videoError && videoRef.current && videoRef.current.readyState >= 2;
+      const activeTexture = (isVideoReady && videoTextureRef.current) ? videoTextureRef.current : texture;
+      if (materialRef.current.map !== activeTexture) {
+        materialRef.current.map = activeTexture;
+        materialRef.current.needsUpdate = true;
+      }
+      return;
+    }
+
+    // ── HIDDEN: another card is expanded — slide off and fade out ───────────
+    if (anyExpanded) {
+      const offX = rel >= 0 ? CARD_OFFSCREEN_X : -CARD_OFFSCREEN_X;
+      meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, offX, CARD_EXPAND_LERP);
+      meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, 0, CARD_EXPAND_LERP);
+      materialRef.current.opacity = THREE.MathUtils.lerp(materialRef.current.opacity, 0, CARD_EXPAND_LERP);
+      if (videoRef.current && !videoRef.current.paused) videoRef.current.pause();
+      return;
+    }
+
+    // ── NORMAL: standard carousel behaviour ─────────────────────────────────
+    // Restore opacity as card collapses back
+    materialRef.current.opacity = THREE.MathUtils.lerp(materialRef.current.opacity, 0.85, MESH_LERP_FACTOR);
+
     const shouldPlay = dist <= CARD_PLAY_RADIUS;
     const shouldLoad = dist <= CARD_LOAD_RADIUS;
 
-    // Lazy-load: trigger disk read only when card is close to center view
     if (videoRef.current && shouldLoad && !videoLoadStarted.current) {
       videoLoadStarted.current = true;
-      const video = videoRef.current;
-      video.preload = 'auto';
-      if (videoSrc) {
-        hlsRef.current = initHlsVideo(video, videoSrc);
-      }
+      videoRef.current.preload = 'auto';
+      if (videoSrc) { hlsRef.current = initHlsVideo(videoRef.current, videoSrc); }
     }
 
-    // Play active video, pause others — errors are surfaced via the 'error' event listener
     if (videoRef.current && !videoError) {
       if (shouldPlay) {
         if (videoRef.current.paused) videoRef.current.play().catch((err: unknown) => {
@@ -230,8 +474,6 @@ function Card({
     }
 
     const offset = CARD_OFFSETS[index % CARD_OFFSETS.length];
-
-    // Responsive position coefficients
     const isMobile = state.viewport.width < MOBILE_VIEWPORT_BREAKPOINT;
     const spreadX = isMobile ? CARD_SPREAD_X_MOBILE : CARD_SPREAD_X_DESKTOP;
     const driftY  = isMobile ? CARD_DRIFT_Y_MOBILE  : CARD_DRIFT_Y_DESKTOP;
@@ -239,16 +481,12 @@ function Card({
     const targetX = offset.x + rel * spreadX;
     const targetY = offset.y + rel * driftY + Math.sin(t * 0.8 + index * 1.3) * 0.04;
     const targetZ = offset.z - dist * 0.8;
-
     const targetRX = offset.rx;
     const targetRY = offset.ry + rel * 0.05;
     const targetRZ = offset.rz;
-
-    // active focus scaling
     const activeScale = hovered ? CARD_HOVER_SCALE : 1.0;
     const targetScale = Math.max(CARD_SCALE_MIN, 1 - dist * CARD_SCALE_FALLOFF) * activeScale;
 
-    // Skip lerp for distant cards — cheap instant set
     if (dist > MESH_INSTANT_THRESHOLD) {
       meshRef.current.position.set(targetX, targetY, targetZ);
       meshRef.current.rotation.set(targetRX, targetRY, targetRZ);
@@ -259,14 +497,13 @@ function Card({
     meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, targetX, MESH_LERP_FACTOR);
     meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, targetY, MESH_LERP_FACTOR);
     meshRef.current.position.z = THREE.MathUtils.lerp(meshRef.current.position.z, targetZ, MESH_LERP_FACTOR);
-
     meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, targetRX, MESH_LERP_FACTOR);
     meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, targetRY, MESH_LERP_FACTOR);
     meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, targetRZ, MESH_LERP_FACTOR);
+    meshRef.current.scale.x = THREE.MathUtils.lerp(meshRef.current.scale.x, targetScale, MESH_LERP_FACTOR);
+    meshRef.current.scale.y = THREE.MathUtils.lerp(meshRef.current.scale.y, targetScale, MESH_LERP_FACTOR);
+    meshRef.current.scale.z = 1;
 
-    meshRef.current.scale.setScalar(THREE.MathUtils.lerp(meshRef.current.scale.x, targetScale, MESH_LERP_FACTOR));
-
-    // Material texture swap logic (only runs when dist <= MESH_INSTANT_THRESHOLD)
     if (materialRef.current) {
       const isVideoReady = !videoError && videoRef.current && videoRef.current.readyState >= 2;
       const activeTexture = (shouldPlay && isVideoReady && videoTextureRef.current) ? videoTextureRef.current : texture;
@@ -277,23 +514,16 @@ function Card({
     }
   });
 
-  // Normalize by the LONG side so portrait and landscape cards have similar visual weight:
-  //   landscape (aspect ≥ 1): long side = width  → cardW = CARD_LONG_SIDE_LANDSCAPE, cardH = / aspect
-  //   portrait  (aspect < 1): long side = height → cardH = CARD_LONG_SIDE_PORTRAIT,  cardW = * aspect
-  const cardW = videoAspect >= 1 ? CARD_LONG_SIDE_LANDSCAPE : CARD_LONG_SIDE_PORTRAIT * videoAspect;
-  const cardH = videoAspect >= 1 ? CARD_LONG_SIDE_LANDSCAPE / videoAspect : CARD_LONG_SIDE_PORTRAIT;
-
   return (
     <mesh
       ref={meshRef}
       onClick={(e) => {
         e.stopPropagation();
-        onClick();
+        if (isExpanded) { onCollapse(); } else { onExpand(); }
       }}
       onPointerOver={(e) => {
         e.stopPropagation();
-        setHovered(true);
-        onHoverChange(true);
+        if (!anyExpanded) { setHovered(true); onHoverChange(true); }
       }}
       onPointerOut={(e) => {
         e.stopPropagation();
@@ -313,15 +543,21 @@ function Card({
   );
 }
 
+// ── GridScene ─────────────────────────────────────────────────────────────────
+
 function GridScene({
   projects,
   scrollRef,
-  onCardClick,
+  expandedId,
+  onExpand,
+  onCollapse,
   onHoverChange,
 }: {
   projects: Project[];
   scrollRef: React.MutableRefObject<number>;
-  onCardClick: (p: Project) => void;
+  expandedId: string | null;
+  onExpand: (id: string) => void;
+  onCollapse: () => void;
   onHoverChange: (h: boolean) => void;
 }) {
   return (
@@ -336,7 +572,10 @@ function GridScene({
             index={idx}
             total={projects.length}
             scrollRef={scrollRef}
-            onClick={() => onCardClick(project)}
+            isExpanded={expandedId === project.id}
+            anyExpanded={expandedId !== null}
+            onExpand={() => onExpand(project.id)}
+            onCollapse={onCollapse}
             onHoverChange={onHoverChange}
           />
         ))}
@@ -345,177 +584,138 @@ function GridScene({
   );
 }
 
-export default function BradyShowcase({ projects, onCardClick, viewMode }: BradyShowcaseProps) {
+// ── BradyShowcase (root) ──────────────────────────────────────────────────────
+
+export default function BradyShowcase({ projects, viewMode }: BradyShowcaseProps) {
   const [mounted, setMounted] = useState(false);
   const [isHoveringGrid, setIsHoveringGrid] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
-
-  // Shared scroll values
   const scroll = useRef(0);
   const targetScroll = useRef(0);
   const lastActiveIndex = useRef(0);
   const isDraggingRef = useRef(false);
   const lastWheelTime = useRef(0);
-
-  // Drag interaction values
   const pointerDownRef = useRef<{ x: number; y: number; scrollVal: number } | null>(null);
+
+  const expandedProject = expandedId ? projects.find((p) => p.id === expandedId) ?? null : null;
+
+  const handleExpand = useCallback((id: string) => { setExpandedId(id); }, []);
+  const handleCollapse = useCallback(() => { setExpandedId(null); }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 0);
     return () => clearTimeout(timer);
   }, []);
 
-  // Set up custom wheel listener for smooth scrolling and auto-drift
+  // Wheel scroll — disabled when a card is expanded
   useEffect(() => {
     if (!mounted || !containerRef.current) return;
-
     const handleWheel = (e: WheelEvent) => {
+      if (expandedId) return;
       lastWheelTime.current = Date.now();
-
       const container = containerRef.current;
       if (!container) return;
-
       const rect = container.getBoundingClientRect();
-      // Only rotate the carousel if the Showcase is in viewport view
       if (rect.top < window.innerHeight && rect.bottom > 0) {
         targetScroll.current += e.deltaY * WHEEL_SENSITIVITY;
       }
     };
-
     const container = containerRef.current;
     container.addEventListener('wheel', handleWheel, { passive: true });
+    return () => { container.removeEventListener('wheel', handleWheel); };
+  }, [mounted, expandedId]);
 
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
-    };
-  }, [mounted]);
-
-  // Reset scroll state on category change
+  // Reset on project change
   useEffect(() => {
     scroll.current = 0;
     targetScroll.current = 0;
     lastActiveIndex.current = 0;
   }, [projects]);
 
-  // Main lerping animation tick
+  // Main animation tick
   useEffect(() => {
     if (!mounted) return;
     let frameId: number;
-
     const tick = () => {
       const n = projects.length;
-      if (n === 0) {
-        frameId = requestAnimationFrame(tick);
-        return;
+      if (n === 0) { frameId = requestAnimationFrame(tick); return; }
+
+      if (!expandedId) {
+        const isIdle = (Date.now() - lastWheelTime.current > IDLE_THRESHOLD_MS)
+          && !isDraggingRef.current && !isHoveringGrid;
+        if (isIdle) { targetScroll.current += AUTO_DRIFT_SPEED; }
       }
 
-      // Cinematic slow auto-drift when not actively scrolling/dragging/hovering
-      const isIdle = (Date.now() - lastWheelTime.current > IDLE_THRESHOLD_MS) && !isDraggingRef.current && !isHoveringGrid;
-      if (isIdle) {
-        targetScroll.current += AUTO_DRIFT_SPEED;
-      }
-
-      // Smooth lerp
       const diff = targetScroll.current - scroll.current;
       scroll.current += diff * SCROLL_LERP_FACTOR;
 
-      // Wrap scroll values seamlessly
       while (targetScroll.current >= n) {
-        targetScroll.current -= n;
-        scroll.current -= n;
-        if (pointerDownRef.current) {
-          pointerDownRef.current.scrollVal -= n;
-        }
+        targetScroll.current -= n; scroll.current -= n;
+        if (pointerDownRef.current) pointerDownRef.current.scrollVal -= n;
       }
       while (targetScroll.current < 0) {
-        targetScroll.current += n;
-        scroll.current += n;
-        if (pointerDownRef.current) {
-          pointerDownRef.current.scrollVal += n;
-        }
+        targetScroll.current += n; scroll.current += n;
+        if (pointerDownRef.current) pointerDownRef.current.scrollVal += n;
       }
 
-      // Update DOM list positions directly
       if (viewMode === 'list' && listContainerRef.current) {
         const items = listContainerRef.current.children;
         const totalItems = n;
         const gap = window.innerWidth < LIST_BREAKPOINT_PX ? LIST_GAP_MOBILE_PX : LIST_GAP_DESKTOP_PX;
-
         for (let i = 0; i < totalItems; i++) {
           const item = items[i] as HTMLElement;
           if (!item) continue;
-
-          // Correct circular wrapping (same fix as in useFrame)
           const rawRel = i - scroll.current;
           const wrappedRel = ((rawRel % totalItems) + totalItems) % totalItems;
           const rel = wrappedRel < totalItems / 2 ? wrappedRel : wrappedRel - totalItems;
-
           const dist = Math.abs(rel);
-          const y = rel * gap;
-
-          item.style.transform = `translate(-50%, calc(-50% + ${y}px))`;
-
-          // Add visual focus states
+          item.style.transform = `translate(-50%, calc(-50% + ${rel * gap}px))`;
           if (dist < LIST_FOCUS_ACTIVE_THRESHOLD) {
-            item.classList.add('active');
-            item.classList.remove('near', 'far');
+            item.classList.add('active'); item.classList.remove('near', 'far');
           } else if (dist < LIST_FOCUS_NEAR_THRESHOLD) {
-            item.classList.add('near');
-            item.classList.remove('active', 'far');
+            item.classList.add('near'); item.classList.remove('active', 'far');
           } else {
-            item.classList.add('far');
-            item.classList.remove('active', 'near');
+            item.classList.add('far'); item.classList.remove('active', 'near');
           }
         }
       }
 
-      // Update active index — use double-modulo for correct fractional-scroll handling
       const activeIdx = ((Math.round(scroll.current) % n) + n) % n;
-      if (activeIdx !== lastActiveIndex.current) {
-        lastActiveIndex.current = activeIdx;
-      }
+      if (activeIdx !== lastActiveIndex.current) { lastActiveIndex.current = activeIdx; }
 
       frameId = requestAnimationFrame(tick);
     };
-
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [mounted, projects.length, viewMode, isHoveringGrid]);
+  }, [mounted, projects.length, viewMode, isHoveringGrid, expandedId]);
 
-  // Pointer drag gestures to manually spin the carousel
+  // Pointer drag — disabled when a card is expanded
   const handlePointerDown = (e: React.PointerEvent) => {
-    pointerDownRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      scrollVal: targetScroll.current,
-    };
-    // Don't capture pointer here — let Three.js mesh clicks through
+    if (expandedId) return;
+    pointerDownRef.current = { x: e.clientX, y: e.clientY, scrollVal: targetScroll.current };
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!pointerDownRef.current) return;
+    if (!pointerDownRef.current || expandedId) return;
     const deltaX = e.clientX - pointerDownRef.current.x;
     const deltaY = e.clientY - pointerDownRef.current.y;
     const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-    // Only start drag if pointer moved more than DRAG_THRESHOLD_PX (avoids eating tap clicks)
     if (dist > DRAG_THRESHOLD_PX) {
       isDraggingRef.current = true;
-      // Convert drag pixel displacement to scroll units
-      const sensitivity = window.innerWidth < 768 ? DRAG_SENSITIVITY_MOBILE : DRAG_SENSITIVITY_DESKTOP;
-      const scrollDelta = -(deltaX / window.innerWidth) * sensitivity;
-      targetScroll.current = pointerDownRef.current.scrollVal + scrollDelta;
+      const sensitivity = window.innerWidth < LIST_BREAKPOINT_PX
+        ? DRAG_SENSITIVITY_MOBILE
+        : DRAG_SENSITIVITY_DESKTOP;
+      targetScroll.current = pointerDownRef.current.scrollVal
+        + -(deltaX / window.innerWidth) * sensitivity;
     }
   };
 
   const handlePointerUp = () => {
     pointerDownRef.current = null;
-    // Small delay so isDragging stays true through the click event, then resets
-    setTimeout(() => {
-      isDraggingRef.current = false;
-    }, 50);
+    setTimeout(() => { isDraggingRef.current = false; }, 50);
   };
 
   if (!mounted) {
@@ -528,44 +728,29 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
     );
   }
 
-
   return (
     <div
       ref={containerRef}
       className="relative w-full h-screen bg-[#0a0a0a] overflow-hidden select-none"
     >
-      {/* Stylesheet for list view typography focus and custom easing transitions */}
       <style>{`
         .list-item {
-          position: absolute;
-          left: 50%;
-          top: 50%;
+          position: absolute; left: 50%; top: 50%;
           font-family: var(--font-primary), sans-serif;
           font-weight: 300;
           font-size: clamp(1.6rem, 5.5vw, 4.2rem);
-          text-transform: uppercase;
-          color: white;
-          transition: letter-spacing 0.5s cubic-bezier(0.22, 0.61, 0.36, 1), 
+          text-transform: uppercase; color: white;
+          transition: letter-spacing 0.5s cubic-bezier(0.22, 0.61, 0.36, 1),
                       opacity 0.5s cubic-bezier(0.22, 0.61, 0.36, 1),
                       font-size 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
           white-space: nowrap;
         }
-        .list-item.active {
-          opacity: 1;
-          letter-spacing: 0.15em;
-          font-weight: 200;
-        }
-        .list-item.near {
-          opacity: 0.45;
-          letter-spacing: 0.04em;
-        }
-        .list-item.far {
-          opacity: 0.12;
-          letter-spacing: 0em;
-        }
+        .list-item.active { opacity: 1; letter-spacing: 0.15em; font-weight: 200; }
+        .list-item.near   { opacity: 0.45; letter-spacing: 0.04em; }
+        .list-item.far    { opacity: 0.12; letter-spacing: 0em; }
       `}</style>
 
-      {/* Grid View Container */}
+      {/* Grid View */}
       <div
         className={`absolute inset-0 transition-opacity duration-700 ease-out z-10 ${
           viewMode === 'grid' ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -574,7 +759,7 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        data-cursor={isHoveringGrid ? 'view' : undefined}
+        data-cursor={isHoveringGrid && !expandedId ? 'view' : undefined}
       >
         <ErrorBoundary>
           <Canvas camera={{ position: [0, 0, 5], fov: 50 }} gl={{ alpha: true }} dpr={[1, 1.5]}>
@@ -582,7 +767,9 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
               <GridScene
                 projects={projects}
                 scrollRef={scroll}
-                onCardClick={onCardClick}
+                expandedId={expandedId}
+                onExpand={handleExpand}
+                onCollapse={handleCollapse}
                 onHoverChange={setIsHoveringGrid}
               />
             )}
@@ -590,7 +777,7 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
         </ErrorBoundary>
       </div>
 
-      {/* List View Container */}
+      {/* List View */}
       <div
         ref={listContainerRef}
         className={`absolute inset-0 transition-opacity duration-700 ease-out z-20 ${
@@ -606,7 +793,7 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
         {projects.map((project, idx) => (
           <button
             key={`list-${project.id}-${idx}`}
-            onClick={() => onCardClick(project)}
+            onClick={() => handleExpand(project.id)}
             className="list-item"
             data-cursor="view"
             tabIndex={viewMode === 'list' ? 0 : -1}
@@ -616,6 +803,13 @@ export default function BradyShowcase({ projects, onCardClick, viewMode }: Brady
         ))}
       </div>
 
+      {/* Expanded info overlay */}
+      {expandedProject && (
+        <ExpandedInfoOverlay
+          project={expandedProject}
+          onCollapse={handleCollapse}
+        />
+      )}
     </div>
   );
 }
