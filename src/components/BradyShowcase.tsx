@@ -394,10 +394,7 @@ function Card({
           hlsRef.current = initHlsVideo(videoRef.current, videoSrc);
         }
         if (videoRef.current.paused) {
-          videoRef.current.play().catch((err: unknown) => {
-            console.warn('[BradyShowcase] play() failed:', err);
-            setVideoError(true);
-          });
+          videoRef.current.play().catch(() => {});
         }
       }
 
@@ -432,21 +429,15 @@ function Card({
       videoLoadStarted.current = true;
       videoRef.current.preload = 'auto';
       if (videoSrc) { hlsRef.current = initHlsVideo(videoRef.current, videoSrc); }
-    } else if (videoRef.current && !shouldLoad && videoLoadStarted.current && dist > CARD_LOAD_RADIUS + 1.5) {
-      try {
-        videoRef.current.pause();
-        if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-        videoRef.current.src = ''; videoRef.current.load();
-      } catch {}
-      videoLoadStarted.current = false;
     }
 
     if (videoRef.current && !videoError && videoLoadStarted.current) {
       if (shouldPlay) {
-        if (videoRef.current.paused) videoRef.current.play().catch((err: unknown) => {
-          console.warn('[BradyShowcase] play() failed:', err);
-          setVideoError(true);
-        });
+        if (videoRef.current.paused) {
+          videoRef.current.play().catch(() => {
+            // Interrupted play promises during rapid scrolling are normal; don't permanently break the card
+          });
+        }
       } else {
         if (!videoRef.current.paused) videoRef.current.pause();
       }
