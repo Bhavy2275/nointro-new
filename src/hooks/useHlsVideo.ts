@@ -23,14 +23,16 @@ export function initHlsVideo(video: HTMLVideoElement, videoUrl: string, onParsed
       if (onParsed) onParsed();
     } else if (Hls.isSupported()) {
       const hlsInstance = new Hls({
-        capLevelToPlayerSize: false,
-        defaultAudioCodec: 'mp4a.40.2', // Optimization
+        capLevelToPlayerSize: true,
+        enableWorker: true,
+        maxBufferLength: 15,
+        maxMaxBufferLength: 30,
+        backBufferLength: 10,
       });
       hls = hlsInstance;
       hlsInstance.loadSource(videoUrl);
       hlsInstance.attachMedia(video);
       hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-        hlsInstance.currentLevel = hlsInstance.levels.length - 1; // Force highest quality manifest resolution
         if (onParsed) onParsed();
       });
     }

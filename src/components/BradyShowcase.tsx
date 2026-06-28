@@ -103,30 +103,7 @@ function ExpandedInfoOverlay({
             cursor: 'default',
           }}
         >
-          {/* Close button */}
-          <button
-            onClick={(e) => { e.stopPropagation(); onCollapse(); }}
-            aria-label="Close"
-            style={{
-              position: 'absolute',
-              top: '1.5rem',
-              right: '1.5rem',
-              zIndex: 60,
-              width: '2.5rem',
-              height: '2.5rem',
-              borderRadius: '50%',
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: 'rgba(255,255,255,0.7)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontSize: '1rem',
-            }}
-          >
-            ✕
-          </button>
+
 
           {/* Scroll hint — bottom of first viewport */}
           <div
@@ -352,7 +329,7 @@ function Card({
       video.src = videoSrc;
     }
     video.muted = true; video.loop = true; video.playsInline = true;
-    video.preload = 'none'; video.setAttribute('decoding', 'async');
+    video.preload = 'metadata'; video.setAttribute('decoding', 'async');
     videoRef.current = video; videoLoadStarted.current = false;
 
     const onMeta = () => {
@@ -436,6 +413,7 @@ function Card({
         materialRef.current.map = activeTexture;
         materialRef.current.needsUpdate = true;
       }
+      materialRef.current.color.set(activeTexture ? '#ffffff' : '#141414');
       return;
     }
 
@@ -511,6 +489,7 @@ function Card({
         materialRef.current.map = activeTexture;
         materialRef.current.needsUpdate = true;
       }
+      materialRef.current.color.set(activeTexture ? '#ffffff' : '#141414');
     }
   });
 
@@ -534,6 +513,7 @@ function Card({
       <planeGeometry args={[cardW, cardH]} />
       <meshBasicMaterial
         ref={materialRef}
+        color="#141414"
         map={texture}
         transparent
         opacity={0.85}
