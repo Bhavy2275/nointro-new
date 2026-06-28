@@ -322,14 +322,8 @@ function Card({
     let active = true;
     const video = document.createElement('video');
     video.crossOrigin = 'anonymous';
-    if (!videoSrc.includes('.m3u8')) {
-      const separator = videoSrc.includes('?') ? '&' : '?';
-      video.src = `${videoSrc}${separator}cv=1`;
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = videoSrc;
-    }
     video.muted = true; video.loop = true; video.playsInline = true;
-    video.preload = 'metadata'; video.setAttribute('decoding', 'async');
+    video.preload = 'none'; video.setAttribute('decoding', 'async');
     videoRef.current = video; videoLoadStarted.current = false;
 
     const onMeta = () => {
@@ -438,9 +432,16 @@ function Card({
       videoLoadStarted.current = true;
       videoRef.current.preload = 'auto';
       if (videoSrc) { hlsRef.current = initHlsVideo(videoRef.current, videoSrc); }
+    } else if (videoRef.current && !shouldLoad && videoLoadStarted.current && dist > CARD_LOAD_RADIUS + 1.5) {
+      try {
+        videoRef.current.pause();
+        if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+        videoRef.current.src = ''; videoRef.current.load();
+      } catch {}
+      videoLoadStarted.current = false;
     }
 
-    if (videoRef.current && !videoError) {
+    if (videoRef.current && !videoError && videoLoadStarted.current) {
       if (shouldPlay) {
         if (videoRef.current.paused) videoRef.current.play().catch((err: unknown) => {
           console.warn('[BradyShowcase] play() failed:', err);

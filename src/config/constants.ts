@@ -8,10 +8,10 @@
 // ─── Video playback ──────────────────────────────────────────────────────────
 
 /** Cards within this distance from centre will have their HLS stream loaded. */
-export const CARD_LOAD_RADIUS = 6.0;
+export const CARD_LOAD_RADIUS = 3.5;
 
 /** Cards within this distance from centre will actively play their video. */
-export const CARD_PLAY_RADIUS = 4.5;
+export const CARD_PLAY_RADIUS = 2.2;
 
 // ─── Scroll / interaction ────────────────────────────────────────────────────
 
