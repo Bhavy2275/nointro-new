@@ -321,6 +321,10 @@ function Card({
   const [hlsLoadTrigger, setHlsLoadTrigger] = useState(false);
   // Ref-based trigger so useFrame can request HLS init without calling setState
   const hlsLoadTriggerRef = useRef(false);
+  // True once HLS manifest is parsed (or native src is set) — gates play() calls
+  const hlsReadyRef = useRef(false);
+  // In-flight play() promise — prevents overlapping play/pause AbortError storms
+  const pendingPlayRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     if (!videoSrc) return;
@@ -332,6 +336,8 @@ function Card({
     videoRef.current = video;
     videoLoadStarted.current = false;
     hlsLoadTriggerRef.current = false;
+    hlsReadyRef.current = false;
+    pendingPlayRef.current = null;
     setVideoError(false);
     setHlsLoadTrigger(false);
 
@@ -343,6 +349,16 @@ function Card({
     };
     video.addEventListener('loadedmetadata', onMeta);
 
+    // When the video stalls (e.g. buffer depleted after being paused a long time),
+    // force HLS to resume loading so it recovers automatically.
+    const onWaiting = () => {
+      if (!active) return;
+      if (hlsRef.current) {
+        try { hlsRef.current.startLoad(); } catch {}
+      }
+    };
+    video.addEventListener('waiting', onWaiting);
+
     const tex = new THREE.VideoTexture(video);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
@@ -351,6 +367,7 @@ function Card({
     return () => {
       active = false;
       video.removeEventListener('loadedmetadata', onMeta);
+      video.removeEventListener('waiting', onWaiting);
       try {
         video.pause();
         if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -372,6 +389,11 @@ function Card({
     hlsRef.current = hls;
 
     if (hls) {
+      // Mark ready once manifest is parsed so useFrame can safely call play()
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (active) hlsReadyRef.current = true;
+      });
+
       // Attach error recovery directly to the HLS instance
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (!active) return;
@@ -391,6 +413,14 @@ function Card({
         }
         // Non-fatal errors: HLS.js retries internally, no action needed
       });
+    } else {
+      // Native HLS (Safari): src is set directly, mark ready on canplay
+      const onCanPlay = () => { if (active) hlsReadyRef.current = true; };
+      video.addEventListener('canplay', onCanPlay);
+      return () => {
+        active = false;
+        video.removeEventListener('canplay', onCanPlay);
+      };
     }
 
     return () => {
@@ -439,8 +469,11 @@ function Card({
             setHlsLoadTrigger(true);
           }
         }
-        if (videoRef.current.paused) {
-          videoRef.current.play().catch(() => {});
+        // Only play once HLS has parsed its manifest (src is actually attached)
+        if (hlsReadyRef.current && videoRef.current.paused && !pendingPlayRef.current) {
+          pendingPlayRef.current = videoRef.current.play()
+            .catch(() => {})
+            .finally(() => { pendingPlayRef.current = null; });
         }
       }
 
@@ -460,7 +493,15 @@ function Card({
       meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, offX, CARD_EXPAND_LERP);
       meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, 0, CARD_EXPAND_LERP);
       materialRef.current.opacity = THREE.MathUtils.lerp(materialRef.current.opacity, 0, CARD_EXPAND_LERP);
-      if (videoRef.current?.paused === false) videoRef.current?.pause();
+      // Pause safely — wait for any in-flight play() before pausing
+      if (videoRef.current && !videoRef.current.paused) {
+        if (pendingPlayRef.current) {
+          pendingPlayRef.current.then(() => videoRef.current?.pause()).catch(() => {});
+          pendingPlayRef.current = null;
+        } else {
+          videoRef.current.pause();
+        }
+      }
       return;
     }
 
@@ -482,13 +523,20 @@ function Card({
 
     if (videoRef.current && videoLoadStarted.current) {
       if (shouldPlay) {
-        if (videoRef.current.paused) {
-          videoRef.current.play().catch(() => {
-            // Interrupted play promises during rapid scrolling are normal; don't permanently break the card
-          });
+        // Only attempt play() when HLS is ready and no play is already in-flight
+        if (hlsReadyRef.current && videoRef.current.paused && !pendingPlayRef.current) {
+          pendingPlayRef.current = videoRef.current.play()
+            .catch(() => {})
+            .finally(() => { pendingPlayRef.current = null; });
         }
       } else {
-        if (!videoRef.current.paused) videoRef.current.pause();
+        // Cancel any in-flight play before pausing
+        if (pendingPlayRef.current) {
+          pendingPlayRef.current.then(() => videoRef.current?.pause()).catch(() => {});
+          pendingPlayRef.current = null;
+        } else if (!videoRef.current.paused) {
+          videoRef.current.pause();
+        }
       }
     }
 
@@ -524,8 +572,11 @@ function Card({
     meshRef.current.scale.z = 1;
 
     if (materialRef.current) {
+      // Show the video texture whenever it has data (even when paused between
+      // play-radius visits) — only fall back to the canvas placeholder when
+      // the video has no decoded frames yet.
       const isVideoReady = videoRef.current && videoRef.current.readyState >= 2;
-      const activeTexture = (shouldPlay && isVideoReady && videoTextureRef.current) ? videoTextureRef.current : texture;
+      const activeTexture = (isVideoReady && videoTextureRef.current) ? videoTextureRef.current : texture;
       if (materialRef.current.map !== activeTexture) {
         materialRef.current.map = activeTexture;
         materialRef.current.needsUpdate = true;
