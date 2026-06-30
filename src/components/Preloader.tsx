@@ -4,69 +4,69 @@ import React, { useEffect, useState, useRef } from 'react';
 import { gsap } from 'gsap';
 
 interface PreloaderProps {
-  onComplete?: () => void;
+   onComplete?: () => void;
 }
 
 export default function Preloader({ onComplete }: PreloaderProps) {
-  const [count, setCount] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLDivElement>(null);
+   const [count, setCount] = useState(0);
+   const containerRef = useRef<HTMLDivElement>(null);
+   const textRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+useEffect(() => {
+     if (typeof window === 'undefined') return;
 
-    // Prevent scrolling during preloading
-    document.documentElement.classList.add('lenis-prevent');
-    document.body.style.overflow = 'hidden';
+     // Prevent scrolling during preloading
+     document.documentElement.classList.add('lenis-prevent');
+     document.body.style.overflow = 'hidden';
 
-    const obj = { value: 0 };
-    const tl = gsap.timeline({
-      onComplete: () => {
-        // Animation when preloading completes: slide up and fade out text
-        const exitTl = gsap.timeline({
-          onComplete: () => {
-            document.documentElement.classList.remove('lenis-prevent');
-            document.body.style.overflow = '';
-            if (onComplete) onComplete();
-          }
-        });
+     const obj = { value: 0 };
+     const tl = gsap.timeline({
+       onComplete: () => {
+         // Animation when preloading completes: slide up and fade out text
+         const exitTl = gsap.timeline({
+           onComplete: () => {
+             document.documentElement.classList.remove('lenis-prevent');
+             document.body.style.overflow = '';
+             onComplete?.();
+           }
+         });
 
-        exitTl.to(textRef.current, {
-          y: -50,
-          opacity: 0,
-          duration: 0.4,
-          ease: 'power2.in'
-        });
+         exitTl.to(textRef.current, {
+           y: -50,
+           opacity: 0,
+           duration: 0.4,
+           ease: 'power2.in'
+         });
 
-        exitTl.to(containerRef.current, {
-          yPercent: -100,
-          duration: 0.8,
-          ease: 'power4.inOut'
-        }, '-=0.2');
-      }
-    });
+         exitTl.to(containerRef.current, {
+           yPercent: -100,
+           duration: 0.8,
+           ease: 'power4.inOut'
+         }, '-=0.2');
+       }
+     });
 
-    // Count up animation
-    tl.to(obj, {
-      value: 100,
-      duration: 2.0,
-      ease: 'power3.out',
-      onUpdate: () => {
-        setCount(Math.floor(obj.value));
-      }
-    });
+     // Count up animation
+     tl.to(obj, {
+       value: 100,
+       duration: 2.0,
+       ease: 'power3.out',
+       onUpdate: () => {
+         setCount(Math.floor(obj.value));
+       }
+     });
 
-    // Subtle entrance animations inside loader
-    gsap.fromTo('.loader-fade-in', 
-      { opacity: 0, y: 15 },
-      { opacity: 0.5, y: 0, duration: 0.8, ease: 'power2.out', stagger: 0.1 }
-    );
+     // Subtle entrance animations inside loader
+     gsap.fromTo('.loader-fade-in', 
+       { opacity: 0, y: 15 },
+       { opacity: 0.5, y: 0, duration: 0.8, ease: 'power2.out', stagger: 0.1 }
+     );
 
-    return () => {
-      document.documentElement.classList.remove('lenis-prevent');
-      document.body.style.overflow = '';
-    };
-  }, [onComplete]);
+     return () => {
+       document.documentElement.classList.remove('lenis-prevent');
+       document.body.style.overflow = '';
+     };
+   }, [onComplete]);
 
   return (
     <div

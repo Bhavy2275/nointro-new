@@ -4,6 +4,7 @@ import './globals.css';
 import SmoothScroll from '@/components/SmoothScroll';
 import PageTransition from '@/components/PageTransition';
 import Preloader from '@/components/Preloader';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const montserrat = Montserrat({
   subsets: ['latin'],
@@ -45,44 +46,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${montserrat.variable} ${inter.variable}`} suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                const originalWarn = console.warn;
-                console.warn = function(...args) {
-                  if (args[0] && typeof args[0] === 'string') {
-                    const msg = args[0];
-                    if (
-                      msg.includes('THREE.Clock') || 
-                      msg.includes('preloaded') || 
-                      msg.includes('DevTools') ||
-                      msg.includes('React DevTools')
-                    ) {
-                      return;
-                    }
-                  }
-                  originalWarn.apply(console, args);
-                };
-              })();
-            `
-          }}
-        />
-      </head>
+      <head />
       <body className="font-secondary bg-black text-white min-h-screen flex flex-col antialiased" suppressHydrationWarning>
-        {/* Cinematic Preloader count-up overlay */}
         <Preloader />
 
-        {/* Smooth scroll container */}
-        <SmoothScroll>
-          {/* Wipe Transition wrapper */}
-          <PageTransition>
-            <main className="flex-grow flex flex-col">
-              {children}
-            </main>
-          </PageTransition>
-        </SmoothScroll>
+        <ErrorBoundary>
+          <SmoothScroll>
+            <PageTransition>
+              <main className="flex-grow flex flex-col">
+                {children}
+              </main>
+            </PageTransition>
+          </SmoothScroll>
+        </ErrorBoundary>
       </body>
     </html>
   );

@@ -289,29 +289,30 @@ function Card({
   const videoTextureRef = useRef<THREE.VideoTexture | null>(null);
   const [videoAspect, setVideoAspect] = useState<number>(16 / 9);
 
-  // Canvas text placeholder
-  useEffect(() => {
-    const W = 960, H = 540;
-    const canvas = document.createElement('canvas');
-    canvas.width = W; canvas.height = H;
-    const ctx = canvas.getContext('2d')!;
-    const grad = ctx.createLinearGradient(0, 0, W, H);
-    grad.addColorStop(0, '#111111'); grad.addColorStop(1, '#0a0a0a');
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 2;
-    ctx.strokeRect(1, 1, W - 2, H - 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.font = 'bold 22px system-ui, sans-serif'; ctx.letterSpacing = '6px';
-    ctx.textAlign = 'center';
-    ctx.fillText(project.tag.toUpperCase(), W / 2, H / 2 - 28);
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.font = 'bold 48px system-ui, sans-serif'; ctx.letterSpacing = '1px';
-    ctx.fillText(project.title.toUpperCase(), W / 2, H / 2 + 28);
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    const animId = requestAnimationFrame(() => { setTexture(tex); });
-    return () => { cancelAnimationFrame(animId); tex.dispose(); };
-  }, [project.tag, project.title]);
+// Canvas text placeholder
+   useEffect(() => {
+     const W = 960, H = 540;
+     const canvas = document.createElement('canvas');
+     canvas.width = W; canvas.height = H;
+     const ctx = canvas.getContext('2d')!;
+     const grad = ctx.createLinearGradient(0, 0, W, H);
+     grad.addColorStop(0, '#111111'); grad.addColorStop(1, '#0a0a0a');
+     ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+     ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 2;
+     ctx.strokeRect(1, 1, W - 2, H - 2);
+     ctx.fillStyle = 'rgba(255,255,255,0.35)';
+     ctx.font = 'bold 22px system-ui, sans-serif'; ctx.letterSpacing = '6px';
+     ctx.textAlign = 'center';
+     ctx.fillText(project.tag.toUpperCase(), W / 2, H / 2 - 28);
+     ctx.fillStyle = 'rgba(255,255,255,0.85)';
+     ctx.font = 'bold 48px system-ui, sans-serif'; ctx.letterSpacing = '1px';
+     ctx.fillText(project.title.toUpperCase(), W / 2, H / 2 + 28);
+     const tex = new THREE.CanvasTexture(canvas);
+     tex.colorSpace = THREE.SRGBColorSpace;
+     // Use microtask to avoid sync setState in effect
+     Promise.resolve().then(() => setTexture(tex));
+     return () => { tex.dispose(); };
+   }, [project.tag, project.title]);
 
   // Lazy video loader
   const videoSrc = project.video;
@@ -414,7 +415,7 @@ function Card({
       meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, offX, CARD_EXPAND_LERP);
       meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, 0, CARD_EXPAND_LERP);
       materialRef.current.opacity = THREE.MathUtils.lerp(materialRef.current.opacity, 0, CARD_EXPAND_LERP);
-      if (videoRef.current && !videoRef.current.paused) videoRef.current.pause();
+      if (videoRef.current?.paused === false) videoRef.current?.pause();
       return;
     }
 
@@ -732,6 +733,7 @@ export default function BradyShowcase({ projects, viewMode }: BradyShowcaseProps
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         data-cursor={isHoveringGrid && !expandedId ? 'view' : undefined}
+        aria-label="Project carousel - interactive 3D showcase"
       >
         <ErrorBoundary>
           <Canvas camera={{ position: [0, 0, 5], fov: 50 }} gl={{ alpha: true }} dpr={[1, 1.5]}>

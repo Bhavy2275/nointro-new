@@ -2,13 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Lenis from 'lenis';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SmoothScrollContext } from '@/context/SmoothScrollContext';
-
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
-}
 
 export default function SmoothScroll({ children }: { children: React.ReactNode }) {
   const [lenisInstance, setLenisInstance] = useState<Lenis | null>(null);
@@ -35,16 +29,13 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     window.scrollTo(0, 0);
     lenis.scrollTo(0, { immediate: true });
 
-    // Connect Lenis scroll events to GSAP ScrollTrigger
-    lenis.on('scroll', ScrollTrigger.update);
-
-    // Sync Lenis RAF with GSAP Ticker
-    const tick = (time: number) => {
-      lenis.raf(time * 1000);
+    // Use lenis tick method directly for RAF syncing
+    let rafId: number;
+    const tick = () => {
+      lenis.raf(Date.now());
+      rafId = requestAnimationFrame(tick);
     };
-
-    gsap.ticker.add(tick);
-    gsap.ticker.lagSmoothing(0);
+    rafId = requestAnimationFrame(tick);
 
     const timer = setTimeout(() => {
       setLenisInstance(lenis);
@@ -56,8 +47,8 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
         window.history.scrollRestoration = 'auto';
       }
       clearTimeout(timer);
+      if (rafId) cancelAnimationFrame(rafId);
       lenis.destroy();
-      gsap.ticker.remove(tick);
       setLenisInstance(null);
     };
   }, []);

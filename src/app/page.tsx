@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, use } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { projects as marqueeProjects } from '@/components/projects';
@@ -24,7 +24,20 @@ const BradyShowcase = dynamic(
 
 import { useHlsVideo } from '@/hooks/useHlsVideo';
 
-export default function HomePage() {
+interface PageProps {
+  params: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default function HomePage(props: PageProps) {
+  // Unwrap asynchronous page parameters for Next.js 15 compatibility
+  const resolvedParams = props?.params ? use(props.params) : null;
+  const resolvedSearchParams = props?.searchParams ? use(props.searchParams) : null;
+
+  // Suppress unused-vars warnings
+  void resolvedParams;
+  void resolvedSearchParams;
+
   const heroRef = useRef<HTMLDivElement>(null);
   const taglineRef = useRef<HTMLDivElement>(null);
 
