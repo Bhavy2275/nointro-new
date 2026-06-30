@@ -8,6 +8,10 @@ import dynamic from 'next/dynamic';
 import { AGENCY_CONFIG } from '@/config/agency';
 import ContactStrip from '@/components/ContactStrip';
 
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger);
+}
+
 const BradyShowcase = dynamic(
   () => import('@/components/BradyShowcase'),
   {
