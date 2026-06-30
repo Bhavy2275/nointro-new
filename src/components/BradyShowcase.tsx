@@ -38,7 +38,7 @@ import {
 } from '@/config/constants';
 
 import { initHlsVideo } from '@/hooks/useHlsVideo';
-import type Hls from 'hls.js';
+import Hls from 'hls.js';
 
 interface BradyShowcaseProps {
   projects: Project[];
@@ -317,6 +317,10 @@ function Card({
   // Lazy video loader
   const videoSrc = project.video;
   const videoLoadStarted = useRef(false);
+  // Trigger state to kick off HLS loading from a useEffect (not useFrame)
+  const [hlsLoadTrigger, setHlsLoadTrigger] = useState(false);
+  // Ref-based trigger so useFrame can request HLS init without calling setState
+  const hlsLoadTriggerRef = useRef(false);
 
   useEffect(() => {
     if (!videoSrc) return;
@@ -325,7 +329,11 @@ function Card({
     video.crossOrigin = 'anonymous';
     video.muted = true; video.loop = true; video.playsInline = true;
     video.preload = 'none'; video.setAttribute('decoding', 'async');
-    videoRef.current = video; videoLoadStarted.current = false;
+    videoRef.current = video;
+    videoLoadStarted.current = false;
+    hlsLoadTriggerRef.current = false;
+    setVideoError(false);
+    setHlsLoadTrigger(false);
 
     const onMeta = () => {
       if (!active) return;
@@ -334,8 +342,6 @@ function Card({
       }
     };
     video.addEventListener('loadedmetadata', onMeta);
-    const onError = () => { if (!active) return; setVideoError(true); };
-    video.addEventListener('error', onError);
 
     const tex = new THREE.VideoTexture(video);
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -345,7 +351,6 @@ function Card({
     return () => {
       active = false;
       video.removeEventListener('loadedmetadata', onMeta);
-      video.removeEventListener('error', onError);
       try {
         video.pause();
         if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -356,6 +361,43 @@ function Card({
       videoLoadStarted.current = false;
     };
   }, [videoSrc]);
+
+  // HLS initialisation effect — runs when hlsLoadTrigger flips to true
+  useEffect(() => {
+    if (!hlsLoadTrigger || !videoSrc || !videoRef.current) return;
+    const video = videoRef.current;
+    let active = true;
+
+    const hls = initHlsVideo(video, videoSrc);
+    hlsRef.current = hls;
+
+    if (hls) {
+      // Attach error recovery directly to the HLS instance
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (!active) return;
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              // Try to restart the stream on network failure
+              try { hls.startLoad(); } catch {}
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              try { hls.recoverMediaError(); } catch {}
+              break;
+            default:
+              // Unrecoverable — show placeholder
+              setVideoError(true);
+          }
+        }
+        // Non-fatal errors: HLS.js retries internally, no action needed
+      });
+    }
+
+    return () => {
+      active = false;
+      // HLS instance cleanup is handled by the videoSrc effect above
+    };
+  }, [hlsLoadTrigger, videoSrc]);
 
   const cardW = videoAspect >= 1 ? CARD_LONG_SIDE_LANDSCAPE : CARD_LONG_SIDE_PORTRAIT * videoAspect;
   const cardH = videoAspect >= 1 ? CARD_LONG_SIDE_LANDSCAPE / videoAspect : CARD_LONG_SIDE_PORTRAIT;
@@ -388,18 +430,21 @@ function Card({
       materialRef.current.opacity = THREE.MathUtils.lerp(materialRef.current.opacity, 1, CARD_EXPAND_LERP);
 
       // Ensure video is loaded + playing
-      if (videoRef.current && !videoError) {
+      if (videoRef.current) {
         if (!videoLoadStarted.current && videoSrc) {
           videoLoadStarted.current = true;
           videoRef.current.preload = 'auto';
-          hlsRef.current = initHlsVideo(videoRef.current, videoSrc);
+          if (!hlsLoadTriggerRef.current) {
+            hlsLoadTriggerRef.current = true;
+            setHlsLoadTrigger(true);
+          }
         }
         if (videoRef.current.paused) {
           videoRef.current.play().catch(() => {});
         }
       }
 
-      const isVideoReady = !videoError && videoRef.current && videoRef.current.readyState >= 2;
+      const isVideoReady = videoRef.current && videoRef.current.readyState >= 2;
       const activeTexture = (isVideoReady && videoTextureRef.current) ? videoTextureRef.current : texture;
       if (materialRef.current.map !== activeTexture) {
         materialRef.current.map = activeTexture;
@@ -429,10 +474,13 @@ function Card({
     if (videoRef.current && shouldLoad && !videoLoadStarted.current) {
       videoLoadStarted.current = true;
       videoRef.current.preload = 'auto';
-      if (videoSrc) { hlsRef.current = initHlsVideo(videoRef.current, videoSrc); }
+      if (videoSrc && !hlsLoadTriggerRef.current) {
+        hlsLoadTriggerRef.current = true;
+        setHlsLoadTrigger(true);
+      }
     }
 
-    if (videoRef.current && !videoError && videoLoadStarted.current) {
+    if (videoRef.current && videoLoadStarted.current) {
       if (shouldPlay) {
         if (videoRef.current.paused) {
           videoRef.current.play().catch(() => {
@@ -476,7 +524,7 @@ function Card({
     meshRef.current.scale.z = 1;
 
     if (materialRef.current) {
-      const isVideoReady = !videoError && videoRef.current && videoRef.current.readyState >= 2;
+      const isVideoReady = videoRef.current && videoRef.current.readyState >= 2;
       const activeTexture = (shouldPlay && isVideoReady && videoTextureRef.current) ? videoTextureRef.current : texture;
       if (materialRef.current.map !== activeTexture) {
         materialRef.current.map = activeTexture;
