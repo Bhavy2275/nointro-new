@@ -39,6 +39,7 @@ import {
 
 import { initHlsVideo } from '@/hooks/useHlsVideo';
 import Hls from 'hls.js';
+import Ferrofluid from './Ferrofluid';
 
 interface BradyShowcaseProps {
   projects: Project[];
@@ -289,30 +290,27 @@ function Card({
   const videoTextureRef = useRef<THREE.VideoTexture | null>(null);
   const [videoAspect, setVideoAspect] = useState<number>(16 / 9);
 
-// Canvas text placeholder
-   useEffect(() => {
-     const W = 960, H = 540;
-     const canvas = document.createElement('canvas');
-     canvas.width = W; canvas.height = H;
-     const ctx = canvas.getContext('2d')!;
-     const grad = ctx.createLinearGradient(0, 0, W, H);
-     grad.addColorStop(0, '#111111'); grad.addColorStop(1, '#0a0a0a');
-     ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
-     ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 2;
-     ctx.strokeRect(1, 1, W - 2, H - 2);
-     ctx.fillStyle = 'rgba(255,255,255,0.35)';
-     ctx.font = 'bold 22px system-ui, sans-serif'; ctx.letterSpacing = '6px';
-     ctx.textAlign = 'center';
-     ctx.fillText(project.tag.toUpperCase(), W / 2, H / 2 - 28);
-     ctx.fillStyle = 'rgba(255,255,255,0.85)';
-     ctx.font = 'bold 48px system-ui, sans-serif'; ctx.letterSpacing = '1px';
-     ctx.fillText(project.title.toUpperCase(), W / 2, H / 2 + 28);
-     const tex = new THREE.CanvasTexture(canvas);
-     tex.colorSpace = THREE.SRGBColorSpace;
-     // Use microtask to avoid sync setState in effect
-     Promise.resolve().then(() => setTexture(tex));
-     return () => { tex.dispose(); };
-   }, [project.tag, project.title]);
+  // Load logo as fallback alt texture for the card
+  useEffect(() => {
+    const loader = new THREE.TextureLoader();
+    let active = true;
+    let loadedTex: THREE.Texture | null = null;
+    loader.load('/final_nointro.png', (tex) => {
+      if (!active) {
+        tex.dispose();
+        return;
+      }
+      tex.colorSpace = THREE.SRGBColorSpace;
+      loadedTex = tex;
+      setTexture(tex);
+    });
+    return () => {
+      active = false;
+      if (loadedTex) {
+        loadedTex.dispose();
+      }
+    };
+  }, []);
 
   // Lazy video loader
   const videoSrc = project.video;
@@ -507,7 +505,7 @@ function Card({
 
     // ── NORMAL: standard carousel behaviour ─────────────────────────────────
     // Restore opacity as card collapses back
-    materialRef.current.opacity = THREE.MathUtils.lerp(materialRef.current.opacity, 0.85, MESH_LERP_FACTOR);
+    materialRef.current.opacity = THREE.MathUtils.lerp(materialRef.current.opacity, 1.0, MESH_LERP_FACTOR);
 
     const shouldPlay = dist <= CARD_PLAY_RADIUS;
     const shouldLoad = dist <= CARD_LOAD_RADIUS;
@@ -608,7 +606,7 @@ function Card({
         color="#141414"
         map={texture}
         transparent
-        opacity={0.85}
+        opacity={1.0}
         toneMapped={false}
       />
     </mesh>
@@ -805,6 +803,27 @@ export default function BradyShowcase({ projects, viewMode }: BradyShowcaseProps
       ref={containerRef}
       className="relative w-full h-screen bg-[#0a0a0a] overflow-hidden select-none"
     >
+      {/* Background WebGL fluid effect */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <Ferrofluid
+          colors={['#ffffff', '#ffffff', '#ffffff']}
+          backgroundColor="#0a0a0a"
+          speed={0.5}
+          scale={1.6}
+          turbulence={1.0}
+          fluidity={0.1}
+          rimWidth={0.2}
+          sharpness={2.5}
+          shimmer={1.5}
+          glow={2.0}
+          flowDirection="down"
+          opacity={1.0}
+          mouseInteraction={true}
+          mouseStrength={1.0}
+          mouseRadius={0.35}
+          mouseDampening={0.15}
+        />
+      </div>
       <style>{`
         .list-item {
           position: absolute; left: 50%; top: 50%;

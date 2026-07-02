@@ -10,6 +10,9 @@ interface UseHlsVideoOptions {
   onMetadataLoaded?: (video: HTMLVideoElement) => void;
 }
 
+/** Maximum video height (px) we ever want to load — caps at 1080p to avoid lag. */
+const MAX_VIDEO_HEIGHT = 1080;
+
 /**
  * Shared utility function to initialize HLS or native streaming on a video element.
  * Safe to call from both standard React lifecycles (hooks) and imperative animation loops (R3F useFrame).
@@ -23,16 +26,38 @@ export function initHlsVideo(video: HTMLVideoElement, videoUrl: string, onParsed
       if (onParsed) onParsed();
     } else if (Hls.isSupported()) {
       const hlsInstance = new Hls({
-        capLevelToPlayerSize: true,
+        // Do NOT cap to player size — videos render as WebGL textures whose
+        // pixel dimensions can be tiny, causing HLS to lock into low quality.
+        capLevelToPlayerSize: false,
         enableWorker: true,
-        maxBufferLength: 15,
-        maxMaxBufferLength: 30,
-        backBufferLength: 10,
+        // Start at the highest quality level immediately instead of ramping up.
+        startLevel: -1,
+        // Seed the ABR bandwidth estimator at 8 Mbps so the first quality
+        // selection is high rather than conservative.
+        abrEwmaDefaultEstimate: 8_000_000,
+        // Larger buffers reduce quality drops during playback.
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        backBufferLength: 30,
       });
       hls = hlsInstance;
       hlsInstance.loadSource(videoUrl);
       hlsInstance.attachMedia(video);
-      hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+      hlsInstance.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
+        // Find the highest level whose height is within the 1080p cap.
+        // levels are sorted lowest → highest by HLS.js.
+        const levels = data.levels;
+        let capLevel = levels.length - 1; // default: top level
+        for (let i = levels.length - 1; i >= 0; i--) {
+          if (levels[i].height <= MAX_VIDEO_HEIGHT) {
+            capLevel = i;
+            break;
+          }
+        }
+        // autoLevelCapping prevents ABR from ever going above this level.
+        hlsInstance.autoLevelCapping = capLevel;
+        // Start immediately at the capped level instead of ramping up.
+        hlsInstance.currentLevel = capLevel;
         if (onParsed) onParsed();
       });
     }
