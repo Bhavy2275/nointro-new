@@ -50,3 +50,6 @@ CLAUDE.md
 
 # codebase-memory-mcp helper
 cbm.js
+
+# raw database export
+/nointro.db
