@@ -142,7 +142,7 @@ export default function HomePage(props: PageProps) {
               </span>
             </div>
 
-            <h1 className="font-primary font-black text-[clamp(1.2rem,5.5vw,5.5rem)] leading-[1.05] tracking-tight text-white flex flex-nowrap whitespace-nowrap justify-center mb-8 pr-[0.15em]">
+            <h1 className="font-primary font-black text-[clamp(1.2rem,5.5vw,5.5rem)] leading-[1.05] tracking-tight text-white flex flex-wrap justify-center mb-8 pr-[0.15em]">
               {["Where", "passion", "meets", "precision"].map((word, i) => (
                 <span key={i} className="inline-block overflow-hidden mr-2 md:mr-4">
                   <span className="word-inner inline-block translate-y-[100%] pr-[0.1em]">

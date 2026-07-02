@@ -547,17 +547,18 @@ function Card({
 
     const offset = CARD_OFFSETS[index % CARD_OFFSETS.length];
     const isMobile = state.viewport.width < MOBILE_VIEWPORT_BREAKPOINT;
-    const spreadX = isMobile ? CARD_SPREAD_X_MOBILE : CARD_SPREAD_X_DESKTOP;
-    const driftY  = isMobile ? CARD_DRIFT_Y_MOBILE  : CARD_DRIFT_Y_DESKTOP;
+    const scaleMultiplier = isMobile ? Math.min(1.0, state.viewport.width / 5.0) : 1.0;
+    const spreadX = (isMobile ? CARD_SPREAD_X_MOBILE : CARD_SPREAD_X_DESKTOP) * scaleMultiplier;
+    const driftY  = (isMobile ? CARD_DRIFT_Y_MOBILE  : CARD_DRIFT_Y_DESKTOP) * scaleMultiplier;
 
-    const targetX = offset.x + rel * spreadX;
-    const targetY = offset.y + rel * driftY + Math.sin(t * 0.8 + index * 1.3) * 0.04;
+    const targetX = offset.x * scaleMultiplier + rel * spreadX;
+    const targetY = (offset.y + Math.sin(t * 0.8 + index * 1.3) * 0.04) * scaleMultiplier + rel * driftY;
     const targetZ = offset.z - dist * 0.8;
     const targetRX = offset.rx;
     const targetRY = offset.ry + rel * 0.05;
     const targetRZ = offset.rz;
     const activeScale = hovered ? CARD_HOVER_SCALE : 1.0;
-    const targetScale = Math.max(CARD_SCALE_MIN, 1 - dist * CARD_SCALE_FALLOFF) * activeScale;
+    const targetScale = Math.max(CARD_SCALE_MIN, 1 - dist * CARD_SCALE_FALLOFF) * activeScale * scaleMultiplier;
 
     if (dist > MESH_INSTANT_THRESHOLD) {
       meshRef.current.position.set(targetX, targetY, targetZ);

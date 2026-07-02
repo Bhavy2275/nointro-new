@@ -58,30 +58,17 @@ export default function ContactStrip() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+    <div className="fixed bottom-0 left-0 right-0 z-50">
       {/* ── Contact panel — slides up above the strip ── */}
       <div
-        style={{
-          position: 'absolute',
-          bottom: '100%',
-          left: 0,
-          right: 0,
-          background: '#0a0a0a',
-          borderTop: '1px solid rgba(255,255,255,0.07)',
-          overflow: 'hidden',
-          maxHeight: open ? '260px' : '0px',
-          transition: 'max-height 0.45s cubic-bezier(0.22, 0.61, 0.36, 1)',
-        }}
+        className={`absolute bottom-full left-0 right-0 bg-[#0a0a0a] border-t border-white/10 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.22,0.61,0.36,1)] ${
+          open ? 'max-h-[600px] md:max-h-[260px]' : 'max-h-0'
+        }`}
       >
         <div
-          style={{
-            padding: 'clamp(1.5rem, 3vw, 2.5rem) clamp(1.5rem, 5vw, 4rem)',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: '1.5rem 2.5rem',
-            opacity: open ? 1 : 0,
-            transition: 'opacity 0.3s ease 0.1s',
-          }}
+          className={`p-6 md:p-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 transition-opacity duration-300 delay-100 ${
+            open ? 'opacity-100' : 'opacity-0'
+          }`}
         >
           {CONTACTS.map((c) => (
             <a
@@ -89,49 +76,13 @@ export default function ContactStrip() {
               href={c.href}
               target={c.id === 'email' || c.id === 'phone' ? '_self' : '_blank'}
               rel="noopener noreferrer"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.5rem',
-                textDecoration: 'none',
-                color: 'inherit',
-                padding: '1rem',
-                border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: '2px',
-                transition: 'border-color 0.2s, background 0.2s',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.2)';
-                (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)';
-                (e.currentTarget as HTMLElement).style.background = 'transparent';
-              }}
+              className="flex flex-col gap-2 p-4 border border-white/5 hover:border-white/20 hover:bg-white/[0.03] rounded-sm transition-all duration-200 cursor-pointer text-inherit no-underline"
             >
-              <span style={{ color: 'rgba(255,255,255,0.35)' }}>{c.icon}</span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-inter), sans-serif',
-                  fontSize: '0.55rem',
-                  letterSpacing: '0.25em',
-                  color: 'rgba(255,255,255,0.25)',
-                  textTransform: 'uppercase',
-                }}
-              >
+              <span className="text-white/35">{c.icon}</span>
+              <span className="font-secondary text-[9px] tracking-[0.25em] text-white/25 uppercase">
                 {c.label}
               </span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-montserrat), sans-serif',
-                  fontWeight: 600,
-                  fontSize: '0.72rem',
-                  letterSpacing: '0.04em',
-                  color: 'rgba(255,255,255,0.75)',
-                  wordBreak: 'break-all',
-                }}
-              >
+              <span className="font-primary font-semibold text-[11.5px] tracking-[0.04em] text-white/75 break-all">
                 {c.value}
               </span>
             </a>
@@ -140,66 +91,20 @@ export default function ContactStrip() {
       </div>
 
       {/* ── The strip itself ── */}
-      <div
-        style={{
-          background: '#0d0d0d',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-          padding: '0 clamp(1.5rem, 5vw, 4rem)',
-          height: '56px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
+      <div className="bg-[#0d0d0d] border-t border-white/10 px-6 md:px-16 h-14 flex items-center justify-between">
         {/* Left — brand name */}
-        <span
-          style={{
-            fontFamily: 'var(--font-montserrat), sans-serif',
-            fontWeight: 700,
-            fontSize: '0.65rem',
-            letterSpacing: '0.28em',
-            color: 'rgba(255,255,255,0.45)',
-            textTransform: 'uppercase',
-            userSelect: 'none',
-          }}
-        >
+        <span className="font-primary font-bold text-[10px] tracking-[0.28em] text-white/45 uppercase select-none">
           Nointro
         </span>
 
         {/* Right — contact button */}
         <button
           onClick={() => setOpen((o) => !o)}
-          style={{
-            fontFamily: 'var(--font-montserrat), sans-serif',
-            fontWeight: 700,
-            fontSize: '0.6rem',
-            letterSpacing: '0.28em',
-            textTransform: 'uppercase',
-            padding: '0.55rem 1.4rem',
-            border: '1px solid rgba(255,255,255,0.25)',
-            background: open ? '#ffffff' : 'transparent',
-            color: open ? '#000000' : 'rgba(255,255,255,0.75)',
-            cursor: 'pointer',
-            transition: 'background 0.25s, color 0.25s, border-color 0.25s',
-            borderRadius: '1px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-          }}
-          onMouseEnter={(e) => {
-            if (!open) {
-              (e.currentTarget as HTMLElement).style.background = '#ffffff';
-              (e.currentTarget as HTMLElement).style.color = '#000000';
-              (e.currentTarget as HTMLElement).style.borderColor = '#ffffff';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!open) {
-              (e.currentTarget as HTMLElement).style.background = 'transparent';
-              (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.75)';
-              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.25)';
-            }
-          }}
+          className={`font-primary font-bold text-[9px] tracking-[0.28em] uppercase px-6 py-2 border transition-all duration-200 rounded-sm flex items-center gap-2 cursor-pointer ${
+            open
+              ? 'bg-white text-black border-white'
+              : 'bg-transparent text-white/75 border-white/25 hover:bg-white hover:text-black hover:border-white'
+          }`}
         >
           Contact
           <svg
@@ -211,10 +116,9 @@ export default function ContactStrip() {
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            style={{
-              transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-              transition: 'transform 0.3s ease',
-            }}
+            className={`transform transition-transform duration-300 ${
+              open ? 'rotate-180' : 'rotate-0'
+            }`}
           >
             <polyline points="6 9 12 15 18 9" />
           </svg>
