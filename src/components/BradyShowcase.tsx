@@ -312,6 +312,13 @@ function Card({
     };
   }, []);
 
+  // Manage audio mute/unmute based on expanded state
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isExpanded;
+    }
+  }, [isExpanded]);
+
   // Lazy video loader
   const videoSrc = project.video;
   const videoLoadStarted = useRef(false);
