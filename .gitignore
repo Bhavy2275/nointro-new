@@ -43,3 +43,7 @@ next-env.d.ts
 # large media files
 /public/videos/
 *.mp4
+
+# agent configs
+AGENTS.md
+CLAUDE.md
