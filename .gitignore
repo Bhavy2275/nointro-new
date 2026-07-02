@@ -47,3 +47,6 @@ next-env.d.ts
 # agent configs
 AGENTS.md
 CLAUDE.md
+
+# codebase-memory-mcp helper
+cbm.js
