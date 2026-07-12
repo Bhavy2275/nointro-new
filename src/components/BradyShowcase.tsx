@@ -41,6 +41,27 @@ import { initHlsVideo } from '@/hooks/useHlsVideo';
 import Hls from 'hls.js';
 import Ferrofluid from './Ferrofluid';
 
+let _videoContainer: HTMLDivElement | null = null;
+
+function getVideoContainer(): HTMLDivElement {
+  if (!_videoContainer) {
+    _videoContainer = document.createElement('div');
+    _videoContainer.setAttribute('aria-hidden', 'true');
+    _videoContainer.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;';
+    document.body.appendChild(_videoContainer);
+  }
+  return _videoContainer;
+}
+
+function deriveMp4Fallback(videoUrl: string): string | null {
+  if (!videoUrl) return null;
+  if (videoUrl.includes('/downloads/default.mp4')) return null;
+  if (videoUrl.includes('/manifest/video.m3u8')) {
+    return videoUrl.replace('/manifest/video.m3u8', '/downloads/default.mp4');
+  }
+  return null;
+}
+
 interface BradyShowcaseProps {
   projects: Project[];
   viewMode: 'grid' | 'list';
@@ -286,7 +307,6 @@ function Card({
   const hlsRef = useRef<Hls | null>(null);
   const [hovered, setHovered] = useState(false);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
-  const [videoError, setVideoError] = useState(false);
   const videoTextureRef = useRef<THREE.VideoTexture | null>(null);
   const [videoAspect, setVideoAspect] = useState<number>(16 / 9);
 
@@ -295,15 +315,24 @@ function Card({
     const loader = new THREE.TextureLoader();
     let active = true;
     let loadedTex: THREE.Texture | null = null;
-    loader.load('/final_nointro.png', (tex) => {
-      if (!active) {
-        tex.dispose();
-        return;
+    loader.load(
+      '/final_nointro.png',
+      (tex) => {
+        if (!active) {
+          tex.dispose();
+          return;
+        }
+        tex.colorSpace = THREE.SRGBColorSpace;
+        loadedTex = tex;
+        setTexture(tex);
+      },
+      undefined,
+      (err) => {
+        if (active) {
+          console.warn('Card placeholder image failed to load:', err);
+        }
       }
-      tex.colorSpace = THREE.SRGBColorSpace;
-      loadedTex = tex;
-      setTexture(tex);
-    });
+    );
     return () => {
       active = false;
       if (loadedTex) {
@@ -322,16 +351,20 @@ function Card({
   // Lazy video loader
   const videoSrc = project.video;
   const videoLoadStarted = useRef(false);
-  // Trigger state to kick off HLS loading from a useEffect (not useFrame)
-  const [hlsLoadTrigger, setHlsLoadTrigger] = useState(false);
-  // Ref-based trigger so useFrame can request HLS init without calling setState
+  // Trigger counter to kick off HLS loading from a useEffect (not useFrame)
+  const [hlsLoadTrigger, setHlsLoadTrigger] = useState(0);
+  // Ref-based guard so useFrame can request HLS init without calling setState
   const hlsLoadTriggerRef = useRef(false);
   // True once HLS manifest is parsed (or native src is set) — gates play() calls
   const hlsReadyRef = useRef(false);
   // In-flight play() promise — prevents overlapping play/pause AbortError storms
   const pendingPlayRef = useRef<Promise<void> | null>(null);
+  // True if the video has fatal erred out — stops redundant waiting/error recovery
+  const videoErroredRef = useRef(false);
+  // True once we've tried MP4 fallback for this card
+  const fallbackAttemptedRef = useRef(false);
 
-  useEffect(() => {
+   useEffect(() => {
     if (!videoSrc) return;
     let active = true;
     const video = document.createElement('video');
@@ -343,8 +376,11 @@ function Card({
     hlsLoadTriggerRef.current = false;
     hlsReadyRef.current = false;
     pendingPlayRef.current = null;
-    setVideoError(false);
-    setHlsLoadTrigger(false);
+    videoErroredRef.current = false;
+    fallbackAttemptedRef.current = false;
+
+    const container = getVideoContainer();
+    container.appendChild(video);
 
     const onMeta = () => {
       if (!active) return;
@@ -354,10 +390,91 @@ function Card({
     };
     video.addEventListener('loadedmetadata', onMeta);
 
+    const onError = () => {
+      if (!active) return;
+      videoErroredRef.current = true;
+      const errMsg = video.error ? `[${video.error.code}] ${video.error.message}` : 'unknown';
+      console.warn(`[CardVideo] failed src=${video.src} error=${errMsg}`);
+
+      const mp4Src = deriveMp4Fallback(videoSrc);
+      if (mp4Src && !fallbackAttemptedRef.current && video.src !== mp4Src) {
+        fallbackAttemptedRef.current = true;
+        console.info(`[CardVideo] trying MP4 fallback: ${mp4Src}`);
+        cleanupVideo();
+        setupVideoSrc(mp4Src);
+        return;
+      }
+
+      try {
+        if (video.parentNode) video.parentNode.removeChild(video);
+      } catch {}
+      videoRef.current = null;
+      videoLoadStarted.current = false;
+      hlsLoadTriggerRef.current = false;
+      hlsReadyRef.current = false;
+    };
+    video.addEventListener('error', onError);
+    video.addEventListener('abort', onError);
+
+    const cleanupVideo = () => {
+      try {
+        video.pause();
+        video.removeEventListener('loadedmetadata', onMeta);
+        video.removeEventListener('error', onError);
+        video.removeEventListener('abort', onError);
+        video.removeEventListener('waiting', onWaiting);
+        if (onCanPlayForMp4) video.removeEventListener('canplay', onCanPlayForMp4);
+        if (hlsRef.current) {
+          hlsRef.current.destroy();
+          hlsRef.current = null;
+        }
+        video.src = '';
+        video.load();
+        if (video.parentNode === container) container.removeChild(video);
+      } catch (err) { console.warn('[CardVideo] cleanup failed:', err); }
+      if (tex) { try { tex.dispose(); } catch {} }
+      videoTextureRef.current = null;
+      videoRef.current = null;
+      videoLoadStarted.current = false;
+    };
+
+    let onCanPlayForMp4: (() => void) | null = null;
+
+    const setupVideoSrc = (src: string) => {
+      if (!active || !videoSrc) return;
+      onCanPlayForMp4 = null;
+      videoErroredRef.current = false;
+      hlsLoadTriggerRef.current = false;
+      hlsReadyRef.current = false;
+      pendingPlayRef.current = null;
+      videoLoadStarted.current = false;
+      video.preload = 'auto';
+      video.src = src;
+      video.load();
+      container.appendChild(video);
+      video.addEventListener('loadedmetadata', onMeta);
+      video.addEventListener('error', onError);
+      video.addEventListener('abort', onError);
+      video.addEventListener('waiting', onWaiting);
+
+      if (!src.includes('.m3u8')) {
+        onCanPlayForMp4 = () => { if (active) hlsReadyRef.current = true; };
+        video.addEventListener('canplay', onCanPlayForMp4);
+        const hls = initHlsVideo(video, src, () => {
+          if (active) hlsReadyRef.current = true;
+        });
+        hlsRef.current = hls;
+      } else if (!hlsLoadTriggerRef.current) {
+        hlsLoadTriggerRef.current = true;
+        setHlsLoadTrigger((c) => c + 1);
+      }
+    };
+
     // When the video stalls (e.g. buffer depleted after being paused a long time),
     // force HLS to resume loading so it recovers automatically.
     const onWaiting = () => {
       if (!active) return;
+      if (videoErroredRef.current) return;
       if (hlsRef.current) {
         try { hlsRef.current.startLoad(); } catch {}
       }
@@ -371,16 +488,7 @@ function Card({
 
     return () => {
       active = false;
-      video.removeEventListener('loadedmetadata', onMeta);
-      video.removeEventListener('waiting', onWaiting);
-      try {
-        video.pause();
-        if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-        video.src = ''; video.load();
-      } catch (err) { console.warn('Video cleanup failed:', err); }
-      if (tex) { try { tex.dispose(); } catch {} }
-      videoTextureRef.current = null; videoRef.current = null;
-      videoLoadStarted.current = false;
+      cleanupVideo();
     };
   }, [videoSrc]);
 
@@ -413,7 +521,7 @@ function Card({
               break;
             default:
               // Unrecoverable — show placeholder
-              setVideoError(true);
+              break;
           }
         }
         // Non-fatal errors: HLS.js retries internally, no action needed
@@ -471,7 +579,7 @@ function Card({
           videoRef.current.preload = 'auto';
           if (!hlsLoadTriggerRef.current) {
             hlsLoadTriggerRef.current = true;
-            setHlsLoadTrigger(true);
+            setHlsLoadTrigger((c) => c + 1);
           }
         }
         // Only play once HLS has parsed its manifest (src is actually attached)
@@ -522,7 +630,7 @@ function Card({
       videoRef.current.preload = 'auto';
       if (videoSrc && !hlsLoadTriggerRef.current) {
         hlsLoadTriggerRef.current = true;
-        setHlsLoadTrigger(true);
+        setHlsLoadTrigger((c) => c + 1);
       }
     }
 
