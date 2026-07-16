@@ -31,14 +31,6 @@ export const projects: Project[] = [
     meta: { Client: 'NoIntro', Year: '2026', Role: 'Production' },
   },
   {
-    id: '3',
-    title: 'Neon Nights',
-    tag: 'Production',
-    description: 'Immersive cinematic project 3.',
-    video: '/stream/4ec71e95a4599ce1a81bbf8cddf4bb4c/manifest/video.m3u8',
-    meta: { Client: 'NoIntro', Year: '2026', Role: 'Production' },
-  },
-  {
     id: '4',
     title: 'Digital Horizon',
     tag: 'Production',
