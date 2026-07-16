@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { gsap } from 'gsap';
+import { useLoaderStore } from '@/store/useLoaderStore';
 
 interface PreloaderProps {
    onComplete?: () => void;
@@ -11,62 +12,70 @@ export default function Preloader({ onComplete }: PreloaderProps) {
    const [count, setCount] = useState(0);
    const containerRef = useRef<HTMLDivElement>(null);
    const textRef = useRef<HTMLDivElement>(null);
+   
+   // Keep a ref to the current animated value to avoid jumping
+   const currentValRef = useRef({ value: 0 });
 
-useEffect(() => {
+   const loadedCount = useLoaderStore((state) => state.loadedCount);
+   const targetVideos = useLoaderStore((state) => state.targetVideos);
+   const setLoaderFinished = useLoaderStore((state) => state.setLoaderFinished);
+
+   useEffect(() => {
      if (typeof window === 'undefined') return;
 
-     // Prevent scrolling during preloading
-     document.documentElement.classList.add('lenis-prevent');
      document.body.style.overflow = 'hidden';
-
-     const obj = { value: 0 };
-     const tl = gsap.timeline({
-       onComplete: () => {
-         // Animation when preloading completes: slide up and fade out text
-         const exitTl = gsap.timeline({
-           onComplete: () => {
-             document.documentElement.classList.remove('lenis-prevent');
-             document.body.style.overflow = '';
-             onComplete?.();
-           }
-         });
-
-         exitTl.to(textRef.current, {
-           y: -50,
-           opacity: 0,
-           duration: 0.4,
-           ease: 'power2.in'
-         });
-
-         exitTl.to(containerRef.current, {
-           yPercent: -100,
-           duration: 0.8,
-           ease: 'power4.inOut'
-         }, '-=0.2');
-       }
-     });
-
-     // Count up animation
-     tl.to(obj, {
-       value: 100,
-       duration: 2.0,
-       ease: 'power3.out',
-       onUpdate: () => {
-         setCount(Math.floor(obj.value));
-       }
-     });
 
      // Subtle entrance animations inside loader
      gsap.fromTo('.loader-fade-in', 
        { opacity: 0, y: 15 },
        { opacity: 0.5, y: 0, duration: 0.8, ease: 'power2.out', stagger: 0.1 }
      );
-
+     
      return () => {
-       document.documentElement.classList.remove('lenis-prevent');
        document.body.style.overflow = '';
      };
-   }, [onComplete]);
+   }, []);
+
+   useEffect(() => {
+     if (typeof window === 'undefined') return;
+
+     const targetPercentage = Math.floor((loadedCount / targetVideos) * 100);
+     const isComplete = loadedCount >= targetVideos;
+
+     gsap.to(currentValRef.current, {
+       value: targetPercentage,
+       duration: 1.5,
+       ease: 'power3.out',
+       onUpdate: () => {
+         setCount(Math.floor(currentValRef.current.value));
+       },
+       onComplete: () => {
+         if (isComplete && currentValRef.current.value >= 99) {
+           // Animation when preloading completes: slide up and fade out text
+           const exitTl = gsap.timeline({
+             onComplete: () => {
+               setLoaderFinished();
+               onComplete?.();
+             }
+           });
+
+           exitTl.to(textRef.current, {
+             y: -50,
+             opacity: 0,
+             duration: 0.4,
+             ease: 'power2.in'
+           });
+
+           exitTl.to(containerRef.current, {
+             yPercent: -100,
+             duration: 0.8,
+             ease: 'power4.inOut'
+           }, '-=0.2');
+         }
+       }
+     });
+
+   }, [loadedCount, targetVideos, setLoaderFinished, onComplete]);
 
   return (
     <div

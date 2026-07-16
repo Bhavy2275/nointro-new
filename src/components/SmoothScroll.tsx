@@ -3,9 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import Lenis from 'lenis';
 import { SmoothScrollContext } from '@/context/SmoothScrollContext';
+import { useLoaderStore } from '@/store/useLoaderStore';
 
 export default function SmoothScroll({ children }: { children: React.ReactNode }) {
   const [lenisInstance, setLenisInstance] = useState<Lenis | null>(null);
+  const isLoaderFinished = useLoaderStore((state) => state.isLoaderFinished);
 
   useEffect(() => {
     // Only run on client
@@ -52,6 +54,16 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
       setLenisInstance(null);
     };
   }, []);
+
+  // Lock and unlock scroll based on loader state
+  useEffect(() => {
+    if (!lenisInstance) return;
+    if (isLoaderFinished) {
+      lenisInstance.start();
+    } else {
+      lenisInstance.stop();
+    }
+  }, [lenisInstance, isLoaderFinished]);
 
   return (
     <SmoothScrollContext.Provider value={lenisInstance}>

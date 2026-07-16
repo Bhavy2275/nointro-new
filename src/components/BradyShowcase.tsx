@@ -5,6 +5,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { Project } from './projects';
 import ErrorBoundary from './ErrorBoundary';
+import { useLoaderStore } from '@/store/useLoaderStore';
 import {
   CARD_OFFSETS,
   CARD_LOAD_RADIUS,
@@ -305,6 +306,15 @@ function Card({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [hovered, setHovered] = useState(false);
+  const incrementLoaded = useLoaderStore((state) => state.incrementLoaded);
+  const loaderIncrementedRef = useRef(false);
+
+  const markLoaded = useCallback(() => {
+    if (!loaderIncrementedRef.current && index < 3) {
+      loaderIncrementedRef.current = true;
+      incrementLoaded();
+    }
+  }, [index, incrementLoaded]);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const videoTextureRef = useRef<THREE.VideoTexture | null>(null);
   const [videoAspect, setVideoAspect] = useState<number>(16 / 9);
@@ -401,6 +411,7 @@ function Card({
       videoLoadStarted.current = false;
       hlsLoadTriggerRef.current = false;
       hlsReadyRef.current = false;
+      markLoaded(); // Don't stall loader on hard error
     };
     video.addEventListener('error', onError);
 
@@ -461,6 +472,7 @@ function Card({
         if (active) {
           hlsNetworkErrorsRef.current = 0; // reset on clean load
           hlsReadyRef.current = true;
+          markLoaded();
         }
       });
 
@@ -481,6 +493,7 @@ function Card({
                   hlsReadyRef.current = false;
                   videoLoadStarted.current = false;
                   hlsLoadTriggerRef.current = false;
+                  markLoaded(); // Don't stall on fatal error
                 }
               }
               break;
@@ -494,6 +507,7 @@ function Card({
                 hlsReadyRef.current = false;
                 videoLoadStarted.current = false;
                 hlsLoadTriggerRef.current = false;
+                markLoaded(); // Don't stall on fatal error
               }
               break;
           }
@@ -504,10 +518,16 @@ function Card({
       // Covers: Safari native HLS (.m3u8) AND all direct MP4/MOV files
       if (video.readyState >= 3) {
         // Already ready (cached) — set immediately
-        if (active) hlsReadyRef.current = true;
+        if (active) {
+          hlsReadyRef.current = true;
+          markLoaded();
+        }
       } else {
         const onCanPlay = () => {
-          if (active) hlsReadyRef.current = true;
+          if (active) {
+            hlsReadyRef.current = true;
+            markLoaded();
+          }
         };
         video.addEventListener('canplay', onCanPlay);
         return () => {
