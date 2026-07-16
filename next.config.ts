@@ -59,9 +59,22 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: isDev
               ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; connect-src 'self' ws: wss: https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://api.resend.com https://cloudflareinsights.com; img-src 'self' data: https://images.unsplash.com https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://videodelivery.net; media-src 'self' blob: data: https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://videodelivery.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-src 'self' https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://videodelivery.net; worker-src 'self' blob:;"
-              : "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' ws: wss: https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://api.resend.com https://cloudflareinsights.com; img-src 'self' data: https://images.unsplash.com https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://videodelivery.net; media-src 'self' blob: data: https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://videodelivery.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-src 'self' https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://videodelivery.net; worker-src 'self' blob:;",
+              ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; connect-src 'self' ws: wss: /stream/ https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://api.resend.com https://cloudflareinsights.com; img-src 'self' data: https://images.unsplash.com https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://videodelivery.net; media-src 'self' blob: data: https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://videodelivery.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-src 'self' https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://videodelivery.net; worker-src 'self' blob:;"
+              : "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' ws: wss: /stream/ https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://api.resend.com https://cloudflareinsights.com; img-src 'self' data: https://images.unsplash.com https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://videodelivery.net; media-src 'self' blob: data: https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://videodelivery.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-src 'self' https://customer-6amjhasmm5fjjw52.cloudflarestream.com https://videodelivery.net; worker-src 'self' blob:;",
           },
         ],
+      },
+    ];
+  },
+  // Proxy /stream/:path* → Cloudflare Stream so all HLS manifest + segment
+  // requests appear same-origin to the browser, bypassing Cloudflare's
+  // restrictive CORS header (Access-Control-Allow-Origin: videodelivery.net).
+  async rewrites() {
+    return [
+      {
+        source: '/stream/:path*',
+        destination:
+          'https://customer-6amjhasmm5fjjw52.cloudflarestream.com/:path*',
       },
     ];
   },
