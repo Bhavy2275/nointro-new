@@ -103,6 +103,15 @@ function ExpandedInfoOverlay({
     return () => window.removeEventListener('keydown', onKey);
   }, [onCollapse]);
 
+  // Prevent body scroll while overlay is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
   return (
     <>
       {/* Scrollable info overlay */}
@@ -113,6 +122,7 @@ function ExpandedInfoOverlay({
           inset: 0,
           zIndex: 50,
           overflowY: 'auto',
+          overscrollBehavior: 'contain',
           WebkitOverflowScrolling: 'touch',
         }}
       >
