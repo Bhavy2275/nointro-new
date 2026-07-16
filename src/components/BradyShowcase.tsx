@@ -410,7 +410,11 @@ function Card({
         setVideoAspect(video.videoWidth / video.videoHeight);
       }
     };
+    // iOS Safari may not fire `loadedmetadata` for hidden/off-screen videos,
+    // so also listen for `loadeddata` and `canplay` which fire more reliably.
     video.addEventListener('loadedmetadata', onMeta);
+    video.addEventListener('loadeddata', onMeta);
+    video.addEventListener('canplay', onMeta);
 
     const onError = () => {
       if (!active) return;
@@ -432,6 +436,8 @@ function Card({
       try {
         video.pause();
         video.removeEventListener('loadedmetadata', onMeta);
+        video.removeEventListener('loadeddata', onMeta);
+        video.removeEventListener('canplay', onMeta);
         video.removeEventListener('error', onError);
         video.removeEventListener('waiting', onWaiting);
         if (hlsRef.current) {
