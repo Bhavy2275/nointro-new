@@ -63,7 +63,7 @@ export function initHlsVideo(video: HTMLVideoElement, videoUrl: string, onParsed
     }
   } else {
     video.src = videoUrl;
-    if (onParsed) onParsed();
+    // Do NOT call onParsed() here — BradyShowcase manages readiness via canplay
   }
 
   return hls;

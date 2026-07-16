@@ -394,12 +394,12 @@ function Card({
       if (!active) return;
       videoErroredRef.current = true;
       const errMsg = video.error ? `[${video.error.code}] ${video.error.message}` : 'unknown';
-      console.warn(`[CardVideo] failed src=${video.src} error=${errMsg}`);
+      console.debug(`[CardVideo] failed src=${video.src} error=${errMsg}`);
 
       const mp4Src = deriveMp4Fallback(videoSrc);
       if (mp4Src && !fallbackAttemptedRef.current && video.src !== mp4Src) {
         fallbackAttemptedRef.current = true;
-        console.info(`[CardVideo] trying MP4 fallback: ${mp4Src}`);
+        console.debug(`[CardVideo] trying MP4 fallback: ${mp4Src}`);
         cleanupVideo();
         setupVideoSrc(mp4Src);
         return;
@@ -513,27 +513,36 @@ function Card({
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              // Try to restart the stream on network failure
-              try { hls.startLoad(); } catch {}
+              // Fatal network error (e.g. 404 manifest) — destroy instead of
+              // retrying so we don't flood the console with infinite attempts.
+              try { hls.destroy(); hlsRef.current = null; } catch {}
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
               try { hls.recoverMediaError(); } catch {}
               break;
             default:
-              // Unrecoverable — show placeholder
+              // Unrecoverable — destroy and show placeholder
+              try { hls.destroy(); hlsRef.current = null; } catch {}
               break;
           }
         }
         // Non-fatal errors: HLS.js retries internally, no action needed
       });
     } else {
-      // Native HLS (Safari): src is set directly, mark ready on canplay
-      const onCanPlay = () => { if (active) hlsReadyRef.current = true; };
-      video.addEventListener('canplay', onCanPlay);
-      return () => {
-        active = false;
-        video.removeEventListener('canplay', onCanPlay);
-      };
+      // Covers: Safari native HLS (.m3u8) AND all direct MP4/MOV files
+      if (video.readyState >= 3) {
+        // Already ready (cached) — set immediately
+        if (active) hlsReadyRef.current = true;
+      } else {
+        const onCanPlay = () => {
+          if (active) hlsReadyRef.current = true;
+        };
+        video.addEventListener('canplay', onCanPlay);
+        return () => {
+          active = false;
+          video.removeEventListener('canplay', onCanPlay);
+        };
+      }
     }
 
     return () => {
