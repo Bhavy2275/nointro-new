@@ -360,6 +360,8 @@ function Card({
   const pendingPlayRef = useRef<Promise<void> | null>(null);
   // True if the video has fatal erred out — stops redundant waiting/error recovery
   const videoErroredRef = useRef(false);
+  // Counts consecutive fatal HLS network errors — gates retry vs destroy logic
+  const hlsNetworkErrorsRef = useRef(0);
 
    useEffect(() => {
     if (!videoSrc) return;
@@ -374,6 +376,7 @@ function Card({
     hlsReadyRef.current = false;
     pendingPlayRef.current = null;
     videoErroredRef.current = false;
+    hlsNetworkErrorsRef.current = 0;
 
     const container = getVideoContainer();
     container.appendChild(video);
@@ -457,7 +460,10 @@ function Card({
     if (hls) {
       // Mark ready once manifest is parsed so useFrame can safely call play()
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        if (active) hlsReadyRef.current = true;
+        if (active) {
+          hlsNetworkErrorsRef.current = 0; // reset on clean load
+          hlsReadyRef.current = true;
+        }
       });
 
       // Attach error recovery directly to the HLS instance
@@ -466,9 +472,14 @@ function Card({
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              // Fatal network error (e.g. 404 manifest) — destroy instead of
-              // retrying so we don't flood the console with infinite attempts.
-              try { hls.destroy(); hlsRef.current = null; } catch {}
+              // Retry transient network failures (CDN hiccup, proxy timeout).
+              // Give up after 3 consecutive fatal errors to avoid looping on 404s.
+              hlsNetworkErrorsRef.current += 1;
+              if (hlsNetworkErrorsRef.current <= 3) {
+                try { hls.startLoad(); } catch {}
+              } else {
+                try { hls.destroy(); hlsRef.current = null; } catch {}
+              }
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
               try { hls.recoverMediaError(); } catch {}
