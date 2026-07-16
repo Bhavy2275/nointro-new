@@ -53,12 +53,11 @@ function getVideoContainer(): HTMLDivElement {
   return _videoContainer;
 }
 
-function deriveMp4Fallback(videoUrl: string): string | null {
-  if (!videoUrl) return null;
-  if (videoUrl.includes('/downloads/default.mp4')) return null;
-  if (videoUrl.includes('/manifest/video.m3u8')) {
-    return videoUrl.replace('/manifest/video.m3u8', '/downloads/default.mp4');
-  }
+// MP4 downloads from Cloudflare Stream require per-video opt-in in the
+// dashboard (Allow downloads). Since that feature is not enabled, the
+// /downloads/default.mp4 endpoint always 404s. Return null unconditionally
+// so the error handler never attempts the fallback request.
+function deriveMp4Fallback(_videoUrl: string): string | null {
   return null;
 }
 
@@ -361,8 +360,6 @@ function Card({
   const pendingPlayRef = useRef<Promise<void> | null>(null);
   // True if the video has fatal erred out — stops redundant waiting/error recovery
   const videoErroredRef = useRef(false);
-  // True once we've tried MP4 fallback for this card
-  const fallbackAttemptedRef = useRef(false);
 
    useEffect(() => {
     if (!videoSrc) return;
@@ -377,7 +374,6 @@ function Card({
     hlsReadyRef.current = false;
     pendingPlayRef.current = null;
     videoErroredRef.current = false;
-    fallbackAttemptedRef.current = false;
 
     const container = getVideoContainer();
     container.appendChild(video);
@@ -393,18 +389,8 @@ function Card({
     const onError = () => {
       if (!active) return;
       videoErroredRef.current = true;
-      const errMsg = video.error ? `[${video.error.code}] ${video.error.message}` : 'unknown';
-      console.debug(`[CardVideo] failed src=${video.src} error=${errMsg}`);
-
-      const mp4Src = deriveMp4Fallback(videoSrc);
-      if (mp4Src && !fallbackAttemptedRef.current && video.src !== mp4Src) {
-        fallbackAttemptedRef.current = true;
-        console.debug(`[CardVideo] trying MP4 fallback: ${mp4Src}`);
-        cleanupVideo();
-        setupVideoSrc(mp4Src);
-        return;
-      }
-
+      // deriveMp4Fallback always returns null (Cloudflare downloads not enabled),
+      // so we go straight to cleanup and show the logo placeholder.
       try {
         if (video.parentNode) video.parentNode.removeChild(video);
       } catch {}
@@ -423,7 +409,6 @@ function Card({
         video.removeEventListener('error', onError);
         video.removeEventListener('abort', onError);
         video.removeEventListener('waiting', onWaiting);
-        if (onCanPlayForMp4) video.removeEventListener('canplay', onCanPlayForMp4);
         if (hlsRef.current) {
           hlsRef.current.destroy();
           hlsRef.current = null;
@@ -436,38 +421,6 @@ function Card({
       videoTextureRef.current = null;
       videoRef.current = null;
       videoLoadStarted.current = false;
-    };
-
-    let onCanPlayForMp4: (() => void) | null = null;
-
-    const setupVideoSrc = (src: string) => {
-      if (!active || !videoSrc) return;
-      onCanPlayForMp4 = null;
-      videoErroredRef.current = false;
-      hlsLoadTriggerRef.current = false;
-      hlsReadyRef.current = false;
-      pendingPlayRef.current = null;
-      videoLoadStarted.current = false;
-      video.preload = 'auto';
-      video.src = src;
-      video.load();
-      container.appendChild(video);
-      video.addEventListener('loadedmetadata', onMeta);
-      video.addEventListener('error', onError);
-      video.addEventListener('abort', onError);
-      video.addEventListener('waiting', onWaiting);
-
-      if (!src.includes('.m3u8')) {
-        onCanPlayForMp4 = () => { if (active) hlsReadyRef.current = true; };
-        video.addEventListener('canplay', onCanPlayForMp4);
-        const hls = initHlsVideo(video, src, () => {
-          if (active) hlsReadyRef.current = true;
-        });
-        hlsRef.current = hls;
-      } else if (!hlsLoadTriggerRef.current) {
-        hlsLoadTriggerRef.current = true;
-        setHlsLoadTrigger((c) => c + 1);
-      }
     };
 
     // When the video stalls (e.g. buffer depleted after being paused a long time),
