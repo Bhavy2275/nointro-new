@@ -45,7 +45,7 @@ export function initHlsVideo(video: HTMLVideoElement, videoUrl: string, onParsed
         maxBufferSize: 30 * 1024 * 1024,
         // Don't downgrade quality for short stalls — maintain high quality.
         abrBandWidthUpFactor: 0.7,
-        abrBandWidthDownFactor: 0.5,
+        abrBandWidthFactor: 0.5,
       });
       hls = hlsInstance;
       hlsInstance.loadSource(videoUrl);
