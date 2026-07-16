@@ -551,16 +551,27 @@ function Card({
           markLoaded();
         }
       } else {
-        const onCanPlay = () => {
-          if (active) {
-            hlsReadyRef.current = true;
-            markLoaded();
-          }
+        // Listen for multiple readiness events as fallback — iOS Safari may not
+        // fire `canplay` for hidden/off-screen video elements but usually fires
+        // `loadeddata` or `loadedmetadata` earlier, so we catch whichever comes first.
+        const markReady = () => {
+          if (!active) return;
+          if (hlsReadyRef.current) return; // already marked
+          hlsReadyRef.current = true;
+          markLoaded();
+          cleanup();
         };
-        video.addEventListener('canplay', onCanPlay);
+        const cleanup = () => {
+          video.removeEventListener('canplay', markReady);
+          video.removeEventListener('loadeddata', markReady);
+          video.removeEventListener('loadedmetadata', markReady);
+        };
+        video.addEventListener('canplay', markReady);
+        video.addEventListener('loadeddata', markReady);
+        video.addEventListener('loadedmetadata', markReady);
         return () => {
           active = false;
-          video.removeEventListener('canplay', onCanPlay);
+          cleanup();
         };
       }
     }

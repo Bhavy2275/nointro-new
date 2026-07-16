@@ -15,6 +15,7 @@ export default function Preloader({ onComplete }: PreloaderProps) {
    
    // Keep a ref to the current animated value to avoid jumping
    const currentValRef = useRef({ value: 0 });
+   const completedRef = useRef(false);
 
    const loadedCount = useLoaderStore((state) => state.loadedCount);
    const targetVideos = useLoaderStore((state) => state.targetVideos);
@@ -36,6 +37,21 @@ export default function Preloader({ onComplete }: PreloaderProps) {
      };
    }, []);
 
+   // Safety net: force-finish the preloader after 12s regardless of loaded count.
+   // Prevents the user from being stuck at 0% if videos fail to report readiness
+   // (e.g. iOS Safari not firing canplay on hidden elements, CDN outage, etc.)
+   useEffect(() => {
+     if (typeof window === 'undefined') return;
+     const timer = setTimeout(() => {
+       if (!completedRef.current) {
+         completedRef.current = true;
+         setLoaderFinished();
+         onComplete?.();
+       }
+     }, 12000);
+     return () => clearTimeout(timer);
+   }, [setLoaderFinished, onComplete]);
+
    useEffect(() => {
      if (typeof window === 'undefined') return;
 
@@ -51,6 +67,9 @@ export default function Preloader({ onComplete }: PreloaderProps) {
        },
        onComplete: () => {
          if (isComplete && currentValRef.current.value >= 99) {
+           if (completedRef.current) return; // safety timeout already fired
+           completedRef.current = true;
+
            // Animation when preloading completes: slide up and fade out text
            const exitTl = gsap.timeline({
              onComplete: () => {
