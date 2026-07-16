@@ -14,7 +14,7 @@ export interface Project {
 }
 
 export const projects: Project[] = [
-   {
+  {
     id: '1',
     title: 'Blangywood Festival',
     tag: 'Production',
@@ -63,35 +63,11 @@ export const projects: Project[] = [
     meta: { Client: 'NoIntro', Year: '2026', Role: 'Production' },
   },
   {
-    id: '7',
-    title: 'Motion Study',
-    tag: 'Production',
-    description: 'Immersive cinematic project 7.',
-    video: '/stream/7339a3300b913f0519fb51ef9c63114a/manifest/video.m3u8',
-    meta: { Client: 'NoIntro', Year: '2026', Role: 'Production' },
-  },
-  {
-    id: '8',
-    title: 'City Lights',
-    tag: 'Production',
-    description: 'Immersive cinematic project 8.',
-    video: '/stream/06312e2fca5227a2d66f85910dbd0a5e/manifest/video.m3u8',
-    meta: { Client: 'NoIntro', Year: '2026', Role: 'Production' },
-  },
-  {
     id: '9',
     title: 'Velocity',
     tag: 'Production',
     description: 'Immersive cinematic project 9.',
     video: '/stream/9d73892ed8fd1e85d4d0e2ef88b5d481/manifest/video.m3u8',
-    meta: { Client: 'NoIntro', Year: '2026', Role: 'Production' },
-  },
-  {
-    id: '10',
-    title: 'Midnight Run',
-    tag: 'Production',
-    description: 'Immersive cinematic project 10.',
-    video: '/stream/906870775d3a268a2439be2517660d2d/manifest/video.m3u8',
     meta: { Client: 'NoIntro', Year: '2026', Role: 'Production' },
   },
   {
@@ -119,14 +95,6 @@ export const projects: Project[] = [
     meta: { Client: 'NoIntro', Year: '2026', Role: 'Production' },
   },
   {
-    id: '14',
-    title: 'Drift',
-    tag: 'Production',
-    description: 'Immersive cinematic project 14.',
-    video: '/stream/3f8d5d3a0cf622544a8b68466aba68b7/manifest/video.m3u8',
-    meta: { Client: 'NoIntro', Year: '2026', Role: 'Production' },
-  },
-  {
     id: '15',
     title: 'Gravity',
     tag: 'Production',
@@ -143,14 +111,6 @@ export const projects: Project[] = [
     meta: { Client: 'NoIntro', Year: '2026', Role: 'Production' },
   },
   {
-    id: '17',
-    title: 'Spectrum',
-    tag: 'Production',
-    description: 'Immersive cinematic project 17.',
-    video: '/stream/1e506a18a62840da4eb615f9973b51ec/manifest/video.m3u8',
-    meta: { Client: 'NoIntro', Year: '2026', Role: 'Production' },
-  },
-  {
     id: '18',
     title: 'Phantom',
     tag: 'Production',
@@ -164,14 +124,6 @@ export const projects: Project[] = [
     tag: 'Production',
     description: 'Immersive cinematic project 19.',
     video: '/stream/d0a24e99833cb7ed4f385f05daffd440/manifest/video.m3u8',
-    meta: { Client: 'NoIntro', Year: '2026', Role: 'Production' },
-  },
-  {
-    id: '20',
-    title: 'Apex',
-    tag: 'Production',
-    description: 'Immersive cinematic project 20.',
-    video: '/stream/064bfcf1524dd40391153b7936643fca/manifest/video.m3u8',
     meta: { Client: 'NoIntro', Year: '2026', Role: 'Production' },
   },
 ];
