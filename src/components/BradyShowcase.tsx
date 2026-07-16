@@ -372,6 +372,9 @@ function Card({
   const videoErroredRef = useRef(false);
   // Counts consecutive fatal HLS network errors — gates retry vs destroy logic
   const hlsNetworkErrorsRef = useRef(0);
+  // True while the video is buffering after a stall — prevents useFrame from
+  // firing rapid play() calls that loop back into waiting/startLoad().
+  const isRecoveringRef = useRef(false);
 
    useEffect(() => {
     if (!videoSrc) return;
@@ -436,12 +439,24 @@ function Card({
     };
 
     // When the video stalls (e.g. buffer depleted after being paused a long time),
-    // force HLS to resume loading so it recovers automatically.
+    // force HLS to resume loading and resume playback once buffer is ready.
     const onWaiting = () => {
       if (!active) return;
       if (videoErroredRef.current) return;
+      isRecoveringRef.current = true;
       if (hlsRef.current) {
         try { hlsRef.current.startLoad(); } catch {}
+        // Resume playback once enough buffer is loaded — without this,
+        // the video stays paused forever after startLoad() refills the buffer.
+        const onCanPlay = () => {
+          video.removeEventListener('canplay', onCanPlay);
+          if (!active || videoErroredRef.current) return;
+          isRecoveringRef.current = false;
+          if (video.paused) {
+            video.play().catch(() => {});
+          }
+        };
+        video.addEventListener('canplay', onCanPlay, { once: true });
       }
     };
     video.addEventListener('waiting', onWaiting);
@@ -483,10 +498,13 @@ function Card({
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
               // Retry transient network failures (CDN hiccup, proxy timeout).
-              // Give up after 3 consecutive fatal errors to avoid looping on 404s.
+              // Give up after 5 consecutive fatal errors to avoid looping on 404s.
               hlsNetworkErrorsRef.current += 1;
-              if (hlsNetworkErrorsRef.current <= 3) {
+              if (hlsNetworkErrorsRef.current <= 5) {
                 try { hls.startLoad(); } catch {}
+                // Restore highest quality level after recovery so ABR doesn't
+                // restart from the lowest rung.
+                hls.currentLevel = -1;
               } else {
                 try { hls.destroy(); hlsRef.current = null; } catch {}
                 if (active) {
@@ -584,7 +602,8 @@ function Card({
           }
         }
         // Only play once HLS has parsed its manifest (src is actually attached)
-        if (hlsReadyRef.current && videoRef.current.paused && !pendingPlayRef.current) {
+        // Skip if recovering from a stall — onWaiting handles resume via canplay.
+        if (hlsReadyRef.current && videoRef.current.paused && !pendingPlayRef.current && !isRecoveringRef.current) {
           pendingPlayRef.current = videoRef.current.play()
             .catch(() => {})
             .finally(() => { pendingPlayRef.current = null; });
@@ -609,6 +628,7 @@ function Card({
       materialRef.current.opacity = THREE.MathUtils.lerp(materialRef.current.opacity, 0, CARD_EXPAND_LERP);
       // Pause safely — wait for any in-flight play() before pausing
       if (videoRef.current && !videoRef.current.paused) {
+        isRecoveringRef.current = false;
         if (pendingPlayRef.current) {
           pendingPlayRef.current.then(() => videoRef.current?.pause()).catch(() => {});
           pendingPlayRef.current = null;
@@ -638,7 +658,8 @@ function Card({
     if (videoRef.current && videoLoadStarted.current) {
       if (shouldPlay) {
         // Only attempt play() when HLS is ready and no play is already in-flight
-        if (hlsReadyRef.current && videoRef.current.paused && !pendingPlayRef.current) {
+        // Skip if recovering from a stall — onWaiting handles resume via canplay.
+        if (hlsReadyRef.current && videoRef.current.paused && !pendingPlayRef.current && !isRecoveringRef.current) {
           pendingPlayRef.current = videoRef.current.play()
             .catch(() => {})
             .finally(() => { pendingPlayRef.current = null; });

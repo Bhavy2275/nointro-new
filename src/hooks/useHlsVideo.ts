@@ -32,13 +32,20 @@ export function initHlsVideo(video: HTMLVideoElement, videoUrl: string, onParsed
         enableWorker: true,
         // Start at the highest quality level immediately instead of ramping up.
         startLevel: -1,
-        // Seed the ABR bandwidth estimator at 8 Mbps so the first quality
+        // Seed the ABR bandwidth estimator at 10 Mbps so the first quality
         // selection is high rather than conservative.
-        abrEwmaDefaultEstimate: 8_000_000,
-        // Larger buffers reduce quality drops during playback.
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
-        backBufferLength: 30,
+        abrEwmaDefaultEstimate: 10_000_000,
+        // Larger buffers reduce quality drops during playback and prevent
+        // re-buffering when scrolling back to a card.
+        maxBufferLength: 60,
+        maxMaxBufferLength: 120,
+        backBufferLength: 60,
+        // Keep higher buffer before switching quality down — avoids flickering
+        // between quality levels on minor bandwidth dips.
+        maxBufferSize: 30 * 1024 * 1024,
+        // Don't downgrade quality for short stalls — maintain high quality.
+        abrBandwidthUpFactor: 0.7,
+        abrBandwidthDownFactor: 0.5,
       });
       hls = hlsInstance;
       hlsInstance.loadSource(videoUrl);
