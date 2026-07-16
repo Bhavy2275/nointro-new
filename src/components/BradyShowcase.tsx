@@ -403,14 +403,12 @@ function Card({
       hlsReadyRef.current = false;
     };
     video.addEventListener('error', onError);
-    video.addEventListener('abort', onError);
 
     const cleanupVideo = () => {
       try {
         video.pause();
         video.removeEventListener('loadedmetadata', onMeta);
         video.removeEventListener('error', onError);
-        video.removeEventListener('abort', onError);
         video.removeEventListener('waiting', onWaiting);
         if (hlsRef.current) {
           hlsRef.current.destroy();
@@ -479,6 +477,11 @@ function Card({
                 try { hls.startLoad(); } catch {}
               } else {
                 try { hls.destroy(); hlsRef.current = null; } catch {}
+                if (active) {
+                  hlsReadyRef.current = false;
+                  videoLoadStarted.current = false;
+                  hlsLoadTriggerRef.current = false;
+                }
               }
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
@@ -487,6 +490,11 @@ function Card({
             default:
               // Unrecoverable — destroy and show placeholder
               try { hls.destroy(); hlsRef.current = null; } catch {}
+              if (active) {
+                hlsReadyRef.current = false;
+                videoLoadStarted.current = false;
+                hlsLoadTriggerRef.current = false;
+              }
               break;
           }
         }
