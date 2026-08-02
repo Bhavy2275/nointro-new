@@ -113,12 +113,12 @@ export default function Preloader({ onComplete }: PreloaderProps) {
 
       {/* Main Counter */}
       <div className="flex items-center justify-center flex-grow">
-        <h1
+        <div
           ref={textRef}
           className="font-primary font-black text-[clamp(4.5rem,16vw,14rem)] leading-none text-white select-none tabular-nums"
         >
           {count}%
-        </h1>
+        </div>
       </div>
 
       {/* Bottom Bar */}

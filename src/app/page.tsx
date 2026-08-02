@@ -200,13 +200,73 @@ export default function HomePage(props: PageProps) {
         />
       </section>
 
-      {/* 2. Portfolio Marquee Section — full-viewport, edge-to-edge */}
-      <section id="work" className="w-full bg-[#0a0a0a]">
+      {/* 2. Agency Overview & Services Section (Semantic & Indexable HTML) */}
+      <section id="about" aria-labelledby="about-heading" className="w-full bg-[#0a0a0a] border-t border-white/10 py-16 md:py-24 px-6 md:px-16 text-white/90">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-12 justify-between">
+          <div className="md:w-1/2">
+            <span className="font-primary font-bold text-[10px] tracking-[0.3em] text-white/40 uppercase block mb-3">
+              About NoIntro Productions
+            </span>
+            <h2 id="about-heading" className="font-primary font-bold text-2xl md:text-4xl text-white mb-6 leading-tight tracking-tight">
+              Cinematic Storytelling & High-Impact Digital Strategy
+            </h2>
+            <p className="font-secondary text-sm md:text-base text-white/70 leading-relaxed mb-6">
+              NoIntro Productions is an international creative marketing agency and video production house crafting ambitious brand films, commercial campaigns, and digital visual experiences. We bridge high-concept artistic direction with precise digital execution to help brands command attention worldwide.
+            </p>
+            <p className="font-secondary text-sm md:text-base text-white/70 leading-relaxed">
+              Based in Paris with global reach, our team delivers high-end video direction, 3D motion design, and multi-channel campaign creative engineered to generate over 150 million views for visionary clients.
+            </p>
+          </div>
+
+          <div className="md:w-5/12 grid grid-cols-1 gap-6">
+            <div className="p-6 bg-white/[0.02] border border-white/10 rounded-sm">
+              <h3 className="font-primary font-semibold text-base text-white mb-2">Cinematic Video Production</h3>
+              <p className="font-secondary text-xs text-white/60 leading-relaxed">
+                Full-service film direction, cinematography, post-production, and color grading for high-profile brand films, commercials, and festival showcase content.
+              </p>
+            </div>
+            <div className="p-6 bg-white/[0.02] border border-white/10 rounded-sm">
+              <h3 className="font-primary font-semibold text-base text-white mb-2">Brand Identity & Strategy</h3>
+              <p className="font-secondary text-xs text-white/60 leading-relaxed">
+                Comprehensive visual storytelling, creative strategy, and digital positioning tailored to skip introductions and make immediate market impact.
+              </p>
+            </div>
+            <div className="p-6 bg-white/[0.02] border border-white/10 rounded-sm">
+              <h3 className="font-primary font-semibold text-base text-white mb-2">Motion Design & VFX</h3>
+              <p className="font-secondary text-xs text-white/60 leading-relaxed">
+                Cutting-edge 3D graphics, visual effects, and fluid digital animations engineered for modern web, broadcast, and social media platforms.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Portfolio Marquee Section — full-viewport, edge-to-edge */}
+      <section id="work" aria-label="Portfolio Showcase" className="w-full bg-[#0a0a0a]">
         {/* Edge-to-edge Brady Perron 3D stack / list showcase */}
         <BradyShowcase
           projects={marqueeProjects}
           viewMode="grid"
         />
+
+        {/* SSR fallback list of featured projects for Search Engines & Crawlers */}
+        <div className="sr-only">
+          <h2>Featured Creative Projects & Portfolio Directory</h2>
+          <ul>
+            {marqueeProjects.map((proj) => (
+              <li key={proj.id}>
+                <article>
+                  <h3>{proj.title}</h3>
+                  <p>Category: {proj.tag}</p>
+                  <p>Role: {proj.meta?.Role || 'Production'}</p>
+                  <p>Client: {proj.meta?.Client || 'NoIntro'}</p>
+                  <p>Year: {proj.meta?.Year || '2026'}</p>
+                  <p>{proj.description}</p>
+                </article>
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
 
       {/* Contact strip — full-width footer */}

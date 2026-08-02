@@ -58,7 +58,7 @@ export default function ContactStrip() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50">
+    <div id="contact" className="fixed bottom-0 left-0 right-0 z-50">
       {/* ── Contact panel — slides up above the strip ── */}
       <div
         className={`absolute bottom-full left-0 right-0 bg-[#0a0a0a] border-t border-white/10 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.22,0.61,0.36,1)] ${
@@ -76,6 +76,7 @@ export default function ContactStrip() {
               href={c.href}
               target={c.id === 'email' || c.id === 'phone' ? '_self' : '_blank'}
               rel="noopener noreferrer"
+              data-cfemail="none"
               className="flex flex-col gap-2 p-4 border border-white/5 hover:border-white/20 hover:bg-white/[0.03] rounded-sm transition-all duration-200 cursor-pointer text-inherit no-underline"
             >
               <span className="text-white/35">{c.icon}</span>
@@ -83,7 +84,11 @@ export default function ContactStrip() {
                 {c.label}
               </span>
               <span className="font-primary font-semibold text-[11.5px] tracking-[0.04em] text-white/75 break-all">
-                {c.value}
+                {c.id === 'email' ? (
+                  <span dangerouslySetInnerHTML={{ __html: `<!--email_off-->${c.value}<!--/email_off-->` }} />
+                ) : (
+                  c.value
+                )}
               </span>
             </a>
           ))}

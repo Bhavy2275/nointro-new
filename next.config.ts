@@ -65,6 +65,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/cdn-cgi/l/email-protection',
+        destination: '/#contact',
+        permanent: true,
+      },
+    ];
+  },
   // Proxy /stream/:path* → Cloudflare Stream so all HLS manifest + segment
   // requests appear same-origin to the browser, bypassing Cloudflare's
   // restrictive CORS header (Access-Control-Allow-Origin: videodelivery.net).
