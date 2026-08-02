@@ -70,28 +70,30 @@ export default function ContactStrip() {
             open ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          {CONTACTS.map((c) => (
-            <a
-              key={c.id}
-              href={c.href}
-              target={c.id === 'email' || c.id === 'phone' ? '_self' : '_blank'}
-              rel="noopener noreferrer"
-              data-cfemail="none"
-              className="flex flex-col gap-2 p-4 border border-white/5 hover:border-white/20 hover:bg-white/[0.03] rounded-sm transition-all duration-200 cursor-pointer text-inherit no-underline"
-            >
-              <span className="text-white/35">{c.icon}</span>
-              <span className="font-secondary text-[9px] tracking-[0.25em] text-white/25 uppercase">
-                {c.label}
-              </span>
-              <span className="font-primary font-semibold text-[11.5px] tracking-[0.04em] text-white/75 break-all">
-                {c.id === 'email' ? (
-                  <span dangerouslySetInnerHTML={{ __html: `<!--email_off-->${c.value}<!--/email_off-->` }} />
-                ) : (
-                  c.value
-                )}
-              </span>
-            </a>
-          ))}
+          {CONTACTS.map((c) => {
+            const isEmail = c.id === 'email';
+            return (
+              <React.Fragment key={c.id}>
+                {isEmail && <span dangerouslySetInnerHTML={{ __html: '<!--email_off-->' }} />}
+                <a
+                  href={c.href}
+                  target={isEmail || c.id === 'phone' ? '_self' : '_blank'}
+                  rel="noopener noreferrer"
+                  data-cfemail="none"
+                  className="flex flex-col gap-2 p-4 border border-white/5 hover:border-white/20 hover:bg-white/[0.03] rounded-sm transition-all duration-200 cursor-pointer text-inherit no-underline"
+                >
+                  <span className="text-white/35">{c.icon}</span>
+                  <span className="font-secondary text-[9px] tracking-[0.25em] text-white/25 uppercase">
+                    {c.label}
+                  </span>
+                  <span className="font-primary font-semibold text-[11.5px] tracking-[0.04em] text-white/75 break-all">
+                    {c.value}
+                  </span>
+                </a>
+                {isEmail && <span dangerouslySetInnerHTML={{ __html: '<!--/email_off-->' }} />}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
 

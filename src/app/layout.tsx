@@ -34,11 +34,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: 'NOINTRO Productions | Creative Marketing & Video Production Agency',
+    default: 'NOINTRO Productions | Creative Marketing Agency',
     template: '%s | NOINTRO Productions',
   },
   description:
-    'NoIntro Productions is a premier creative marketing agency & video production studio based in Paris, France. We craft cinematic brand films, visual identities, high-impact commercials, and digital growth strategies for visionary brands worldwide.',
+    'NoIntro Productions is a creative marketing agency and video production studio crafting cinematic brand films, visual identities, and digital strategies.',
   keywords: [
     'Creative Marketing Agency',
     'Video Production Studio',
@@ -68,9 +68,9 @@ export const metadata: Metadata = {
     canonical: baseUrl,
   },
   openGraph: {
-    title: 'NOINTRO Productions | Creative Marketing & Video Production Agency',
+    title: 'NOINTRO Productions | Creative Marketing Agency',
     description:
-      'NoIntro Productions is a premier creative marketing agency & video production studio crafting bold visual identities, cinematic brand films, and high-impact digital campaigns.',
+      'NoIntro Productions is a creative marketing agency and video production studio crafting cinematic brand films, visual identities, and digital strategies.',
     url: baseUrl,
     siteName: 'NoIntro Productions',
     locale: 'en_US',
@@ -86,9 +86,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'NOINTRO Productions | Creative Marketing & Video Production Agency',
+    title: 'NOINTRO Productions | Creative Marketing Agency',
     description:
-      'Cinematic portfolio of NoIntro Productions, a creative agency crafting bold visual designs, video productions, and digital strategy.',
+      'NoIntro Productions is a creative marketing agency and video production studio crafting cinematic brand films, visual identities, and digital strategies.',
     images: [`${baseUrl}/icon.png`],
   },
 };
